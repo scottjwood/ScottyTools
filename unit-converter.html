@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Unit Converter — Toolbox</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+
+  <main class="page">
+    <div class="tool-page">
+      <div class="tool-header fade-up">
+        <div class="tool-breadcrumb">
+          <a href="../index.html">Toolbox</a>
+          <span>/</span>
+          <span data-cat="revit">Revit & BIM</span>
+        </div>
+        <h1 class="tool-title">Architectural Unit Converter</h1>
+        <p class="tool-description">Convert between feet-inches fractions, decimal feet, inches, millimeters, and meters. Supports fractional inch input (e.g. 3'-6 5/8").</p>
+      </div>
+
+      <div class="fade-up-2">
+        <!-- Feet-Inches input -->
+        <div class="field">
+          <label>Feet–Inches (e.g.  3'-6 5/8"  or  3'6.625  or  3.542)</label>
+          <input type="text" id="ftInInput" placeholder="3'-6 5/8&quot;" oninput="fromFtIn(this.value)"
+            style="font-size:1rem;padding:10px 14px" />
+        </div>
+
+        <!-- Results grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-top:4px;margin-bottom:20px">
+          <div class="conv-cell" id="cell_decimal_ft">
+            <div class="result-label">Decimal Feet</div>
+            <input class="conv-input" type="number" id="decFt" step="0.0001" oninput="fromDecFt(this.value)" placeholder="—"/>
+            <div class="conv-unit">ft</div>
+          </div>
+          <div class="conv-cell" id="cell_inches">
+            <div class="result-label">Total Inches</div>
+            <input class="conv-input" type="number" id="inches" step="0.001" oninput="fromInches(this.value)" placeholder="—"/>
+            <div class="conv-unit">in</div>
+          </div>
+          <div class="conv-cell" id="cell_mm">
+            <div class="result-label">Millimeters</div>
+            <input class="conv-input" type="number" id="mm" step="0.01" oninput="fromMM(this.value)" placeholder="—"/>
+            <div class="conv-unit">mm</div>
+          </div>
+          <div class="conv-cell" id="cell_cm">
+            <div class="result-label">Centimeters</div>
+            <input class="conv-input" type="number" id="cm" step="0.01" oninput="fromCM(this.value)" placeholder="—"/>
+            <div class="conv-unit">cm</div>
+          </div>
+          <div class="conv-cell" id="cell_meters">
+            <div class="result-label">Meters</div>
+            <input class="conv-input" type="number" id="meters" step="0.0001" oninput="fromMeters(this.value)" placeholder="—"/>
+            <div class="conv-unit">m</div>
+          </div>
+        </div>
+
+        <!-- Fraction breakdown -->
+        <div class="result-panel" id="fracPanel" style="display:none">
+          <div class="result-label">Fractional Breakdown</div>
+          <div id="fracBreakdown" style="font-family:var(--mono);color:var(--accent);font-size:1.2rem;margin-top:6px"></div>
+          <div id="fracAlts" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px"></div>
+        </div>
+
+        <!-- Quick reference -->
+        <div class="result-panel" style="margin-top:16px">
+          <div class="result-label">Common Fractions → Decimal</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-top:10px">
+            ${buildFracRef()}
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <style>
+    .conv-cell {
+      background: var(--bg-1);
+      padding: 14px 16px;
+      position: relative;
+    }
+    .conv-cell .result-label { margin-bottom: 6px; }
+    .conv-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 1.2rem;
+      padding: 4px 0;
+      outline: none;
+    }
+    .conv-input:focus { border-bottom-color: var(--accent); }
+    .conv-unit {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-faint);
+      margin-top: 4px;
+    }
+  </style>
+
+  <script src="../js/tools-registry.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    Nav.init();
+
+    // ── Fraction reference builder (injected in template literal above) ───
+    // Since we can't call functions in template literals at parse time in static HTML,
+    // we'll build it dynamically:
+    function buildFracRef() { return ''; } // placeholder
+
+    const FRACS = [
+      [1,16],[1,8],[3,16],[1,4],[5,16],[3,8],[7,16],[1,2],
+      [9,16],[5,8],[11,16],[3,4],[13,16],[7,8],[15,16]
+    ];
+
+    document.querySelector('.result-panel:last-child > div:last-child').innerHTML =
+      FRACS.map(([n,d]) =>
+        `<div style="background:var(--bg-3);padding:7px 10px;border-radius:var(--radius);font-family:var(--mono);font-size:0.75rem;cursor:pointer"
+          onclick="document.getElementById('ftInInput').value='${n}/${d}';fromFtIn('${n}/${d}')">
+          <span style="color:var(--accent)">${n}/${d}"</span>
+          <span style="color:var(--text-dim);margin-left:6px">${(n/d).toFixed(4)}</span>
+        </div>`
+      ).join('');
+
+    // ── Parse feet-inches string ──────────────────────────────────────────
+    function parseFtIn(str) {
+      str = str.trim();
+      if (!str) return null;
+
+      // Patterns to handle:
+      // 3'-6 5/8"  |  3'6 5/8"  |  3' 6 5/8"
+      // 3'6.625"   |  3.542'    |  42.75"  |  1085mm  |  5/8
+      // plain number = decimal feet
+
+      let totalInches = null;
+
+      // mm input
+      let m = str.match(/^([\d.]+)\s*mm$/i);
+      if (m) return parseFloat(m[1]) / 25.4;
+
+      // meters
+      m = str.match(/^([\d.]+)\s*m$/i);
+      if (m) return parseFloat(m[1]) * 39.3701;
+
+      // inches only  e.g. 42.75"
+      m = str.match(/^([\d.\/\s]+)"$/);
+      if (m) return parseInchFrac(m[1].trim());
+
+      // feet-inches  e.g. 3'-6 5/8"  or 3'6 5/8  or 3' 6.5
+      m = str.match(/^([\d.]+)'\s*[-–]?\s*([\d\s\/\.]*)"?$/);
+      if (m) {
+        const ft = parseFloat(m[1]) || 0;
+        const inPart = m[2].trim();
+        const inches = inPart ? parseInchFrac(inPart) : 0;
+        return ft * 12 + inches;
+      }
+
+      // fraction only  e.g. 5/8
+      m = str.match(/^(\d+)\/(\d+)$/);
+      if (m) return parseFloat(m[1]) / parseFloat(m[2]);
+
+      // plain decimal → assume feet
+      m = str.match(/^[\d.]+$/);
+      if (m) return parseFloat(str) * 12;
+
+      return null;
+    }
+
+    function parseInchFrac(s) {
+      s = s.trim();
+      // e.g. "6 5/8"  or  "6.625"  or  "5/8"
+      const parts = s.split(/\s+/);
+      let total = 0;
+      for (const p of parts) {
+        if (p.includes('/')) {
+          const [n, d] = p.split('/').map(Number);
+          total += n / d;
+        } else {
+          total += parseFloat(p) || 0;
+        }
+      }
+      return total;
+    }
+
+    // ── Format as feet-inches ─────────────────────────────────────────────
+    function toFtInStr(totalInches, denom = 16) {
+      const neg = totalInches < 0;
+      totalInches = Math.abs(totalInches);
+      const ft = Math.floor(totalInches / 12);
+      const remIn = totalInches - ft * 12;
+      const wholeIn = Math.floor(remIn);
+      const frac = remIn - wholeIn;
+      const fracNum = Math.round(frac * denom);
+      let fracStr = '';
+      if (fracNum > 0) {
+        // Reduce
+        const gcd = (a,b) => b ? gcd(b, a%b) : a;
+        const g = gcd(fracNum, denom);
+        fracStr = ` ${fracNum/g}/${denom/g}"`;
+      } else {
+        fracStr = wholeIn > 0 ? '"' : '"';
+      }
+      const inStr = wholeIn > 0 ? `${wholeIn}${fracStr}` : (fracNum > 0 ? fracStr.trim() : '0"');
+      return `${neg?'-':''}${ft}'-${inStr}`;
+    }
+
+    // ── Conversion core ───────────────────────────────────────────────────
+    let _updating = false;
+
+    function setAll(totalIn, skipId = null) {
+      if (_updating) return;
+      _updating = true;
+      if (totalIn === null || isNaN(totalIn)) { _updating = false; return; }
+
+      const vals = {
+        decFt:  (totalIn / 12).toFixed(5),
+        inches: totalIn.toFixed(4),
+        mm:     (totalIn * 25.4).toFixed(3),
+        cm:     (totalIn * 2.54).toFixed(4),
+        meters: (totalIn * 0.0254).toFixed(5),
+      };
+      for (const [id, val] of Object.entries(vals)) {
+        if (id !== skipId) document.getElementById(id).value = val;
+      }
+
+      // Feet-inches display
+      if (skipId !== 'ftInInput') {
+        document.getElementById('ftInInput').value = toFtInStr(totalIn, 16);
+      }
+
+      // Fraction breakdown panel
+      showFracPanel(totalIn);
+      _updating = false;
+    }
+
+    function showFracPanel(totalIn) {
+      const panel = document.getElementById('fracPanel');
+      if (!totalIn) { panel.style.display='none'; return; }
+      panel.style.display = 'block';
+      const denoms = [2,4,8,16,32,64];
+      document.getElementById('fracBreakdown').textContent = toFtInStr(totalIn, 16);
+      document.getElementById('fracAlts').innerHTML = denoms.map(d =>
+        `<div style="font-family:var(--mono);font-size:0.75rem;background:var(--bg-3);padding:6px 10px;border-radius:var(--radius);cursor:pointer"
+          onclick="">
+          <span style="color:var(--text-faint)">/${d}</span>
+          <span style="color:var(--text);margin-left:4px">${toFtInStr(totalIn, d)}</span>
+        </div>`
+      ).join('');
+    }
+
+    function fromFtIn(s)      { setAll(parseFtIn(s), 'ftInInput'); }
+    function fromDecFt(v)     { setAll(parseFloat(v) * 12, 'decFt'); }
+    function fromInches(v)    { setAll(parseFloat(v), 'inches'); }
+    function fromMM(v)        { setAll(parseFloat(v) / 25.4, 'mm'); }
+    function fromCM(v)        { setAll(parseFloat(v) / 2.54, 'cm'); }
+    function fromMeters(v)    { setAll(parseFloat(v) * 39.3701, 'meters'); }
+  </script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pour Weight Estimator — Toolbox</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+
+  <main class="page">
+    <div class="tool-page">
+      <div class="tool-header fade-up">
+        <div class="tool-breadcrumb">
+          <a href="../index.html">Toolbox</a>
+          <span>/</span>
+          <span data-cat="foundry">Bronze Foundry</span>
+        </div>
+        <h1 class="tool-title">Pour Weight Estimator</h1>
+        <p class="tool-description">Estimate metal pour weight from wax weight. Accounts for alloy density ratio, sprue system, and cup weight. Critical for crucible sizing and charge calculation.</p>
+      </div>
+
+      <div class="fade-up-2">
+        <!-- Alloy selector -->
+        <div class="field">
+          <label>Alloy</label>
+          <select id="alloy" onchange="updateAlloy()">
+            <option value="silicon_bronze">Silicon Bronze (C65500) — most common for sculpture</option>
+            <option value="everdur">Everdur (C87200) — self-fluxing, good flow</option>
+            <option value="red_brass">Red Brass (C23000) — warm color</option>
+            <option value="yellow_brass">Yellow Brass (C26000)</option>
+            <option value="aluminum_bronze">Aluminum Bronze (C95400)</option>
+            <option value="custom">Custom density…</option>
+          </select>
+        </div>
+
+        <div id="customDensityField" class="field hidden">
+          <label>Custom Metal Density (g/cm³)</label>
+          <input type="number" id="customDensity" placeholder="8.83" step="0.01" min="1"/>
+        </div>
+
+        <div class="result-panel" style="margin-bottom:20px;padding:14px 18px">
+          <div style="display:flex;flex-wrap:wrap;gap:24px">
+            <div>
+              <div class="result-label">Density</div>
+              <div style="font-family:var(--mono);font-size:1rem;color:var(--accent)" id="densityDisplay">—</div>
+            </div>
+            <div>
+              <div class="result-label">Shrinkage</div>
+              <div style="font-family:var(--mono);font-size:1rem;color:var(--accent)" id="shrinkDisplay">—</div>
+            </div>
+            <div>
+              <div class="result-label">Melt Range</div>
+              <div style="font-family:var(--mono);font-size:1rem;color:var(--accent)" id="meltDisplay">—</div>
+            </div>
+            <div>
+              <div class="result-label">Pour Temp</div>
+              <div style="font-family:var(--mono);font-size:1rem;color:var(--accent)" id="pourTempDisplay">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input fields -->
+        <div class="field-row">
+          <div class="field">
+            <label>Wax Weight</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="waxWeight" placeholder="0" min="0" step="0.1" oninput="calculate()" style="flex:1"/>
+              <select id="waxUnit" onchange="calculate()" style="width:65px">
+                <option value="oz">oz</option>
+                <option value="lb">lb</option>
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Sprue Weight (wax)</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="spruWeight" placeholder="0" min="0" step="0.1" oninput="calculate()" style="flex:1"/>
+              <select id="spruUnit" style="width:65px">
+                <option value="oz">oz</option>
+                <option value="lb">lb</option>
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Cup Weight (metal)</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="cupWeight" placeholder="0" min="0" step="0.1" oninput="calculate()" style="flex:1"/>
+              <select id="cupUnit" style="width:65px">
+                <option value="lb">lb</option>
+                <option value="oz">oz</option>
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Safety Overage %</label>
+            <input type="number" id="overage" value="10" min="0" max="50" step="1" oninput="calculate()"/>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="result-panel mt-2">
+          <div class="result-label">Recommended Pour Weight</div>
+          <div>
+            <span class="result-value" id="totalPour">—</span>
+            <span class="result-unit" id="pourUnit">lb</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-top:16px" id="breakdown"></div>
+        </div>
+
+        <!-- Notes -->
+        <div class="result-panel" style="margin-top:16px">
+          <div class="result-label">Foundry Notes</div>
+          <div id="alloyNotes" style="font-size:0.82rem;color:var(--text-dim);margin-top:8px;line-height:1.7"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/tools-registry.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    Nav.init();
+
+    // Wax density: ~0.95 g/cm³ (microcrystalline)
+    const WAX_DENSITY = 0.93;
+
+    const ALLOYS = {
+      silicon_bronze: {
+        name: 'Silicon Bronze C65500',
+        density: 8.83,   // g/cm³
+        shrinkage: 1.6,  // %
+        meltRange: '1745–1880°F',
+        pourTemp: '1950–2050°F',
+        notes: 'Most widely used alloy for fine art casting. Excellent fluidity, minimal porosity, beautiful warm gold color. Self-deoxidizing — no flux needed. Good for thin sections and fine detail.',
+      },
+      everdur: {
+        name: 'Everdur C87200',
+        density: 8.70,
+        shrinkage: 1.5,
+        meltRange: '1785–1880°F',
+        pourTemp: '1900–2000°F',
+        notes: 'Silicon-manganese bronze. Self-fluxing and very fluid. Excellent for complex sculptures with thin sections. Slightly lighter than C65500.',
+      },
+      red_brass: {
+        name: 'Red Brass C23000',
+        density: 8.75,
+        shrinkage: 1.7,
+        meltRange: '1832–1949°F',
+        pourTemp: '2050–2150°F',
+        notes: 'Higher copper content gives warm reddish color after patina. Slightly higher pour temperature required. Good corrosion resistance.',
+      },
+      yellow_brass: {
+        name: 'Yellow Brass C26000',
+        density: 8.53,
+        shrinkage: 1.6,
+        meltRange: '1652–1724°F',
+        pourTemp: '1850–1950°F',
+        notes: 'Lower density than bronze, slightly lighter charge needed. Lower pour temps are easier on equipment. Yellow/gold color.',
+      },
+      aluminum_bronze: {
+        name: 'Aluminum Bronze C95400',
+        density: 7.45,
+        shrinkage: 2.0,
+        meltRange: '1895–1940°F',
+        pourTemp: '2050–2200°F',
+        notes: 'Notably lighter — factor this into charge weights. Higher shrinkage requires generous riser design. Excellent strength and hardness. Greenish-gray patina.',
+      },
+      custom: {
+        name: 'Custom',
+        density: null,
+        shrinkage: null,
+        meltRange: '—',
+        pourTemp: '—',
+        notes: 'Enter custom density above.',
+      }
+    };
+
+    function toGrams(val, unit) {
+      if (unit === 'lb') return val * 453.592;
+      if (unit === 'oz') return val * 28.3495;
+      if (unit === 'kg') return val * 1000;
+      return val; // g
+    }
+
+    function fromGrams(g, unit) {
+      if (unit === 'lb') return g / 453.592;
+      if (unit === 'oz') return g / 28.3495;
+      if (unit === 'kg') return g / 1000;
+      return g;
+    }
+
+    function updateAlloy() {
+      const id = document.getElementById('alloy').value;
+      const a = ALLOYS[id];
+      const custom = id === 'custom';
+
+      document.getElementById('customDensityField').classList.toggle('hidden', !custom);
+      document.getElementById('densityDisplay').textContent = a.density ? `${a.density} g/cm³` : '—';
+      document.getElementById('shrinkDisplay').textContent = a.shrinkage ? `${a.shrinkage}%` : '—';
+      document.getElementById('meltDisplay').textContent = a.meltRange;
+      document.getElementById('pourTempDisplay').textContent = a.pourTemp;
+      document.getElementById('alloyNotes').textContent = a.notes;
+      calculate();
+    }
+
+    function getMetalDensity() {
+      const id = document.getElementById('alloy').value;
+      if (id === 'custom') {
+        return parseFloat(document.getElementById('customDensity').value) || null;
+      }
+      return ALLOYS[id].density;
+    }
+
+    function calculate() {
+      const waxW   = parseFloat(document.getElementById('waxWeight').value) || 0;
+      const spruW  = parseFloat(document.getElementById('spruWeight').value) || 0;
+      const cupW   = parseFloat(document.getElementById('cupWeight').value) || 0;
+      const overage = (parseFloat(document.getElementById('overage').value) || 10) / 100;
+
+      const waxUnit = document.getElementById('waxUnit').value;
+      const spruUnit = document.getElementById('spruUnit').value;
+      const cupUnit  = document.getElementById('cupUnit').value;
+
+      const metalDensity = getMetalDensity();
+      if (!metalDensity) return;
+
+      const ratio = metalDensity / WAX_DENSITY;
+
+      // Convert wax weights to grams
+      const waxG  = toGrams(waxW, waxUnit);
+      const spruG = toGrams(spruW, spruUnit);
+      const cupG  = toGrams(cupW, cupUnit);
+
+      // Metal equivalents
+      const sculptureMetal = waxG * ratio;
+      const spruMetal = spruG * ratio;
+      const cupMetal  = cupG; // already in metal
+      const subtotal  = sculptureMetal + spruMetal + cupMetal;
+      const total     = subtotal * (1 + overage);
+
+      // Display
+      const dispUnit = 'lb';
+      document.getElementById('totalPour').textContent = fromGrams(total, dispUnit).toFixed(2);
+      document.getElementById('pourUnit').textContent = dispUnit;
+
+      document.getElementById('breakdown').innerHTML = `
+        <div>
+          <div class="result-label">Density Ratio</div>
+          <div style="font-family:var(--mono);font-size:0.9rem">${ratio.toFixed(3)}×</div>
+          <div style="font-size:0.7rem;color:var(--text-faint)">metal / wax</div>
+        </div>
+        <div>
+          <div class="result-label">Sculpture Metal</div>
+          <div style="font-family:var(--mono);font-size:0.9rem">${fromGrams(sculptureMetal, 'lb').toFixed(3)} lb</div>
+        </div>
+        <div>
+          <div class="result-label">Sprue Metal</div>
+          <div style="font-family:var(--mono);font-size:0.9rem">${fromGrams(spruMetal, 'lb').toFixed(3)} lb</div>
+        </div>
+        <div>
+          <div class="result-label">Cup Metal</div>
+          <div style="font-family:var(--mono);font-size:0.9rem">${fromGrams(cupMetal, 'lb').toFixed(3)} lb</div>
+        </div>
+        <div>
+          <div class="result-label">Subtotal</div>
+          <div style="font-family:var(--mono);font-size:0.9rem">${fromGrams(subtotal, 'lb').toFixed(3)} lb</div>
+        </div>
+        <div>
+          <div class="result-label">+ ${(overage*100).toFixed(0)}% overage</div>
+          <div style="font-family:var(--mono);font-size:0.9rem;color:var(--accent)">${fromGrams(total, 'lb').toFixed(3)} lb</div>
+        </div>`;
+    }
+
+    updateAlloy();
+  </script>
+</body>
+</html>

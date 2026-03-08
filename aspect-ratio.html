@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aspect Ratio Calculator — Toolbox</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+
+  <main class="page">
+    <div class="tool-page">
+      <div class="tool-header fade-up">
+        <div class="tool-breadcrumb">
+          <a href="../index.html">Toolbox</a>
+          <span>/</span>
+          <span data-cat="graphic">Graphic & Motion</span>
+        </div>
+        <h1 class="tool-title">Aspect Ratio Calculator</h1>
+        <p class="tool-description">Lock a ratio, find missing dimensions, or calculate letterbox/pillarbox bars. Works with any resolution.</p>
+      </div>
+
+      <div class="fade-up-2">
+
+        <!-- Preset grid -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px" id="presets"></div>
+
+        <!-- Locked ratio display -->
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+          <div class="result-panel" style="flex:1;padding:12px 16px">
+            <div class="result-label">Locked Ratio</div>
+            <div style="font-family:var(--mono);font-size:1.4rem;color:var(--accent)" id="ratioDisplay">—</div>
+          </div>
+          <div class="result-panel" style="flex:1;padding:12px 16px">
+            <div class="result-label">Decimal</div>
+            <div style="font-family:var(--mono);font-size:1.4rem;color:var(--accent)" id="decimalDisplay">—</div>
+          </div>
+          <div style="flex:2">
+            <!-- Visual ratio preview -->
+            <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;display:flex;align-items:center;justify-content:center;height:80px">
+              <div id="ratioBox" style="background:var(--bg-3);border:1px solid var(--border-hi);transition:all 0.3s;max-width:160px;max-height:60px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Solver -->
+        <div class="field-row">
+          <div class="field">
+            <label>Width</label>
+            <input type="number" id="solveW" placeholder="1920" min="1" step="1" oninput="solveFromW()"/>
+          </div>
+          <div class="field">
+            <label>Height</label>
+            <input type="number" id="solveH" placeholder="1080" min="1" step="1" oninput="solveFromH()"/>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          <button class="btn btn-primary" onclick="lockFromInputs()">Lock This Ratio</button>
+          <button class="btn btn-ghost" onclick="clearRatio()">Clear Lock</button>
+        </div>
+
+        <!-- Letterbox calculator -->
+        <div style="margin-top:28px">
+          <div class="section-header">
+            <span class="section-title">Letterbox / Pillarbox Bars</span>
+          </div>
+          <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:16px">
+            Given a frame size, calculate bar sizes needed to reframe to a different ratio.
+          </p>
+          <div class="field-row">
+            <div class="field">
+              <label>Frame Width</label>
+              <input type="number" id="frameW" placeholder="1920" oninput="calcBars()"/>
+            </div>
+            <div class="field">
+              <label>Frame Height</label>
+              <input type="number" id="frameH" placeholder="1080" oninput="calcBars()"/>
+            </div>
+            <div class="field">
+              <label>Target Ratio W</label>
+              <input type="number" id="targetW" placeholder="2.39" step="0.01" oninput="calcBars()"/>
+            </div>
+            <div class="field">
+              <label>Target Ratio H</label>
+              <input type="number" id="targetH" placeholder="1" step="0.01" oninput="calcBars()"/>
+            </div>
+          </div>
+
+          <div class="result-panel mt-2" id="barsResult" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px" id="barsGrid"></div>
+          </div>
+        </div>
+
+        <!-- Common ratios reference -->
+        <div class="result-panel" style="margin-top:16px">
+          <div class="result-label">Common Ratios Reference</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin-top:10px" id="ratioRef"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/tools-registry.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    Nav.init();
+
+    const PRESETS = [
+      { label: '16:9',    w: 16,   h: 9,    note: 'HD/UHD broadcast' },
+      { label: '4:3',     w: 4,    h: 3,    note: 'SD / legacy' },
+      { label: '2.39:1',  w: 2.39, h: 1,    note: 'Anamorphic cinema' },
+      { label: '2.35:1',  w: 2.35, h: 1,    note: 'Scope (historical)' },
+      { label: '1.85:1',  w: 1.85, h: 1,    note: 'Flat cinema' },
+      { label: '1:1',     w: 1,    h: 1,    note: 'Square / Instagram' },
+      { label: '9:16',    w: 9,    h: 16,   note: 'Vertical / Reels' },
+      { label: '4:5',     w: 4,    h: 5,    note: 'Portrait social' },
+      { label: '2.76:1',  w: 2.76, h: 1,    note: 'Ultra Panavision 70' },
+      { label: '1.33:1',  w: 1.33, h: 1,    note: '4:3 decimal' },
+      { label: '17:9',    w: 17,   h: 9,    note: 'DCI close' },
+      { label: 'DCI 1.90',w: 1.896,h: 1,    note: 'DCI 4K flat' },
+    ];
+
+    const COMMON_RES = [
+      { label:'1920×1080', w:1920, h:1080 },
+      { label:'3840×2160', w:3840, h:2160 },
+      { label:'4096×2160', w:4096, h:2160 },
+      { label:'2048×1080', w:2048, h:1080 },
+      { label:'1280×720',  w:1280, h:720  },
+      { label:'1080×1920', w:1080, h:1920 },
+    ];
+
+    let lockedRatio = null; // { w, h }
+
+    // ── Presets ──────────────────────────────────────────────────────
+    document.getElementById('presets').innerHTML = PRESETS.map(p =>
+      `<button class="cat-pill" onclick="setPreset(${p.w},${p.h},'${p.label}')" title="${p.note}">
+        ${p.label}
+      </button>`
+    ).join('');
+
+    function setPreset(w, h, label) {
+      lockedRatio = { w, h };
+      document.getElementById('solveW').value = '';
+      document.getElementById('solveH').value = '';
+      updateRatioDisplay(w, h);
+    }
+
+    // ── GCD & ratio simplification ───────────────────────────────────
+    function gcd(a, b) {
+      a = Math.round(a * 1000); b = Math.round(b * 1000);
+      while (b) { [a,b] = [b, a%b]; }
+      return a / 1000;
+    }
+
+    function simplifyRatio(w, h) {
+      const g = gcd(w, h);
+      return [w/g, h/g];
+    }
+
+    function updateRatioDisplay(w, h) {
+      const dec = w / h;
+      document.getElementById('ratioDisplay').textContent = `${w}:${h}`;
+      document.getElementById('decimalDisplay').textContent = dec.toFixed(4);
+      // Visual box — normalize to max 140px wide
+      const box = document.getElementById('ratioBox');
+      if (dec >= 1) { box.style.width = '140px'; box.style.height = Math.round(140/dec)+'px'; }
+      else          { box.style.height = '60px'; box.style.width = Math.round(60*dec)+'px'; }
+    }
+
+    // ── Solver ───────────────────────────────────────────────────────
+    let _s = false;
+    function solveFromW() {
+      if (_s) return; _s = true;
+      const w = parseFloat(document.getElementById('solveW').value);
+      if (!w) { _s=false; return; }
+      if (lockedRatio) {
+        const h = Math.round(w * lockedRatio.h / lockedRatio.w);
+        document.getElementById('solveH').value = h;
+      } else {
+        const h = parseFloat(document.getElementById('solveH').value);
+        if (h) updateRatioDisplay(w, h);
+      }
+      _s = false;
+    }
+
+    function solveFromH() {
+      if (_s) return; _s = true;
+      const h = parseFloat(document.getElementById('solveH').value);
+      if (!h) { _s=false; return; }
+      if (lockedRatio) {
+        const w = Math.round(h * lockedRatio.w / lockedRatio.h);
+        document.getElementById('solveW').value = w;
+      } else {
+        const w = parseFloat(document.getElementById('solveW').value);
+        if (w) updateRatioDisplay(w, h);
+      }
+      _s = false;
+    }
+
+    function lockFromInputs() {
+      const w = parseFloat(document.getElementById('solveW').value);
+      const h = parseFloat(document.getElementById('solveH').value);
+      if (!w || !h) return;
+      lockedRatio = { w, h };
+      updateRatioDisplay(w, h);
+    }
+
+    function clearRatio() {
+      lockedRatio = null;
+      document.getElementById('ratioDisplay').textContent = '—';
+      document.getElementById('decimalDisplay').textContent = '—';
+      document.getElementById('ratioBox').style.cssText = '';
+    }
+
+    // ── Bars calculator ──────────────────────────────────────────────
+    function calcBars() {
+      const fw = parseFloat(document.getElementById('frameW').value);
+      const fh = parseFloat(document.getElementById('frameH').value);
+      const tw = parseFloat(document.getElementById('targetW').value);
+      const th = parseFloat(document.getElementById('targetH').value);
+      if (!fw || !fh || !tw || !th) return;
+
+      const frameRatio  = fw / fh;
+      const targetRatio = tw / th;
+      const panel = document.getElementById('barsResult');
+      panel.style.display = 'block';
+
+      let html = '';
+      if (Math.abs(frameRatio - targetRatio) < 0.001) {
+        html = `<div style="color:var(--text-dim);font-family:var(--mono);font-size:0.85rem">Ratios match — no bars needed.</div>`;
+      } else if (frameRatio > targetRatio) {
+        // Letterbox (top/bottom bars)
+        const contentH = fw / targetRatio;
+        const bar = (fh - contentH) / 2;
+        html = `
+          <div><div class="result-label">Type</div><div style="font-family:var(--mono)">Letterbox</div></div>
+          <div><div class="result-label">Content Height</div><div style="font-family:var(--mono);color:var(--accent)">${contentH.toFixed(1)}px</div></div>
+          <div><div class="result-label">Each Bar</div><div style="font-family:var(--mono);color:var(--accent)">${bar.toFixed(1)}px</div></div>
+          <div><div class="result-label">Total Bars</div><div style="font-family:var(--mono)">${(bar*2).toFixed(1)}px</div></div>`;
+      } else {
+        // Pillarbox (left/right bars)
+        const contentW = fh * targetRatio;
+        const bar = (fw - contentW) / 2;
+        html = `
+          <div><div class="result-label">Type</div><div style="font-family:var(--mono)">Pillarbox</div></div>
+          <div><div class="result-label">Content Width</div><div style="font-family:var(--mono);color:var(--accent)">${contentW.toFixed(1)}px</div></div>
+          <div><div class="result-label">Each Bar</div><div style="font-family:var(--mono);color:var(--accent)">${bar.toFixed(1)}px</div></div>
+          <div><div class="result-label">Total Bars</div><div style="font-family:var(--mono)">${(bar*2).toFixed(1)}px</div></div>`;
+      }
+      document.getElementById('barsGrid').innerHTML = html;
+    }
+
+    // ── Reference ────────────────────────────────────────────────────
+    document.getElementById('ratioRef').innerHTML = PRESETS.map(p =>
+      `<div style="background:var(--bg-3);padding:8px 12px;border-radius:var(--radius);cursor:pointer;font-size:0.8rem"
+        onclick="setPreset(${p.w},${p.h},'${p.label}')">
+        <span style="color:var(--accent);font-family:var(--mono)">${p.label}</span>
+        <span style="color:var(--text-dim);margin-left:8px">${p.note}</span>
+      </div>`
+    ).join('');
+  </script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Toolbox</title>
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <!-- NAV injected by JS -->
+  <div id="nav-placeholder"></div>
+
+  <main class="page">
+    <div class="container">
+
+      <!-- Hero -->
+      <section class="hero fade-up">
+        <div class="hero-label">Personal Workshop</div>
+        <h1 class="hero-title">Tool<span>box</span></h1>
+        <p class="hero-sub">A personal collection of calculators and utilities for design, fabrication, and construction work.</p>
+      </section>
+
+      <!-- Category filter -->
+      <div class="cat-pills fade-up-2" id="catPills">
+        <button class="cat-pill active" data-filter="all">
+          <span class="icon">◈</span> All
+        </button>
+        <!-- dynamically filled -->
+      </div>
+
+      <!-- Featured / pinned tools -->
+      <div id="featuredSection">
+        <div class="section-header fade-up-2">
+          <span class="section-title">Pinned</span>
+          <span class="section-count" id="featuredCount"></span>
+        </div>
+        <div class="tool-grid" id="featuredGrid"></div>
+      </div>
+
+      <!-- All tools by category -->
+      <div id="allToolsSection">
+        <div class="section-header fade-up-2">
+          <span class="section-title">All Tools</span>
+          <span class="section-count" id="allCount"></span>
+        </div>
+        <div class="tool-grid" id="allGrid"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span>TOOLBOX</span>
+    <span id="toolCount"></span>
+  </footer>
+
+  <script src="js/tools-registry.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    Nav.init(true);
+
+    // ── Render a tool card ───────────────────────────────────────────
+    function toolCard(tool) {
+      const fav = isFavorite(tool.id);
+      return `
+        <div class="tool-card" onclick="location.href='${tool.path}'">
+          <div class="tool-card-top">
+            <div class="tool-card-cat">
+              <span class="dot" data-cat="${tool.category.id}"></span>
+              <span data-cat="${tool.category.id}">${tool.category.label}</span>
+            </div>
+            <button class="tool-card-fav ${fav ? 'active' : ''}"
+              onclick="event.stopPropagation(); toggleFavUI('${tool.id}', this)"
+              title="Pin to top">★</button>
+          </div>
+          <div class="tool-card-label">${tool.label}</div>
+          <div class="tool-card-desc">${tool.description}</div>
+          <div class="tool-card-arrow">→ open tool</div>
+        </div>`;
+    }
+
+    // ── Favorite toggle UI ───────────────────────────────────────────
+    function toggleFavUI(id, btn) {
+      const isNowFav = toggleFavorite(id);
+      btn.classList.toggle('active', isNowFav);
+      renderAll();
+    }
+
+    // ── Render all grids ─────────────────────────────────────────────
+    let activeFilter = 'all';
+
+    function renderAll() {
+      const filter = activeFilter;
+      let tools = filter === 'all' ? TOOLS : TOOLS.filter(t => t.category.id === filter);
+
+      // Featured section
+      const featured = getFeaturedTools().filter(t =>
+        filter === 'all' || t.category.id === filter
+      );
+      const featuredGrid = document.getElementById('featuredGrid');
+      const featuredSection = document.getElementById('featuredSection');
+      if (featured.length) {
+        featuredGrid.innerHTML = featured.map(toolCard).join('');
+        document.getElementById('featuredCount').textContent = `${featured.length} tools`;
+        featuredSection.classList.remove('hidden');
+      } else {
+        featuredSection.classList.add('hidden');
+      }
+
+      // All tools grid
+      document.getElementById('allGrid').innerHTML = tools.map(toolCard).join('');
+      document.getElementById('allCount').textContent = `${tools.length} tools`;
+      document.getElementById('toolCount').textContent =
+        `${TOOLS.length} tools across ${Object.keys(CATEGORIES).length} categories`;
+    }
+
+    // ── Category pills ───────────────────────────────────────────────
+    function renderPills() {
+      const pills = document.getElementById('catPills');
+      const usedCats = [...new Set(TOOLS.map(t => t.category.id))].map(id =>
+        Object.values(CATEGORIES).find(c => c.id === id)
+      ).filter(Boolean);
+
+      pills.innerHTML = `
+        <button class="cat-pill active" data-filter="all">
+          <span class="icon">◈</span> All
+        </button>
+        ${usedCats.map(c => `
+          <button class="cat-pill" data-filter="${c.id}">
+            <span class="icon">${c.icon}</span> ${c.label}
+          </button>`).join('')}`;
+
+      pills.addEventListener('click', e => {
+        const btn = e.target.closest('.cat-pill');
+        if (!btn) return;
+        pills.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        activeFilter = btn.dataset.filter;
+        renderAll();
+      });
+    }
+
+    renderPills();
+    renderAll();
+  </script>
+</body>
+</html>
