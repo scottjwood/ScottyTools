@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ledger — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+</head>
+<body>
+
+<!-- ScottyTools nav -->
+<div id="nav-placeholder"></div>
+
+<!-- Lock screen -->
+<div class="l-lock-screen" id="lockScreen">
+  <div class="l-lock-logo">LEDGER</div>
+  <div class="l-lock-sub">Enter PIN to unlock</div>
+  <input class="l-pin-input" id="pinInput" type="password" inputmode="numeric"
+    maxlength="10" placeholder="••••" autocomplete="off"
+    onkeydown="if(event.key==='Enter') attemptUnlock()"/>
+  <button class="l-btn l-btn-primary" id="unlockBtn" onclick="attemptUnlock()" style="width:200px">Unlock</button>
+  <div class="l-pin-error" id="pinError"></div>
+  <div class="l-pin-debug" id="pinDebug"></div>
+</div>
+
+<!-- Main app (hidden until unlocked) -->
+<div class="ledger-root" id="ledgerApp" style="display:none">
+
+  <!-- Inner header -->
+  <div class="l-header">
+    <div class="l-logo">LEDGER</div>
+    <div class="l-tabs" id="tabBar">
+      <button class="l-tab active" data-tab="pending" onclick="switchTab('pending')">Pending</button>
+      <button class="l-tab" data-tab="history" onclick="switchTab('history')">History</button>
+      <button class="l-tab" data-tab="settings" onclick="switchTab('settings')">Settings</button>
+    </div>
+    <div class="l-header-right">
+      <span class="l-rate-badge" id="rateBadge">$75/hr</span>
+      <div style="display:flex;align-items:center;gap:5px">
+        <div class="l-conn-dot" id="connDot"></div>
+        <span class="l-conn-badge" id="connBadge"></span>
+      </div>
+      <button class="l-lock-btn" onclick="lockApp()">🔒 Lock</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="l-body">
+
+    <!-- ── SIDEBAR (desktop) / DRAWER (mobile) ── -->
+    <div class="l-sidebar" id="sidebarForm">
+      <div class="l-section-title">New Entry</div>
+
+      <!-- Client -->
+      <div class="l-field">
+        <div class="l-label">Client</div>
+        <select class="l-select" id="fClient" onchange="updatePreview()"></select>
+      </div>
+
+      <!-- Date -->
+      <div class="l-field">
+        <div class="l-label">Date</div>
+        <div class="l-quickpick">
+          <button class="l-qbtn" id="btnToday" onclick="pickDate('today')">Today</button>
+          <button class="l-qbtn" id="btnYesterday" onclick="pickDate('yesterday')">Yesterday</button>
+        </div>
+        <div class="l-cal-wrap" style="margin-top:6px">
+          <div style="display:flex;gap:6px">
+            <input class="l-input" id="fDate" type="text" placeholder="MM-DD-YYYY"
+              maxlength="10"
+              oninput="onDateInput(this)" onfocus="openCal('mainCal')" autocomplete="off" style="flex:1"/>
+            <button class="l-btn l-btn-ghost" style="padding:8px 10px;flex-shrink:0"
+              onclick="toggleCal('mainCal')">📅</button>
+          </div>
+          <div class="l-cal-popup" id="mainCal"></div>
+        </div>
+      </div>
+
+      <!-- Time range -->
+      <div class="l-field">
+        <div class="l-label">Start Time</div>
+        <div class="l-time-row">
+          <select class="l-select" id="fStartH" onchange="updatePreview()"></select>
+          <select class="l-select" id="fStartM" onchange="updatePreview()"></select>
+          <select class="l-select" id="fStartAMPM" onchange="updatePreview()"></select>
+        </div>
+      </div>
+      <div class="l-field">
+        <div class="l-label">End Time</div>
+        <div class="l-time-row">
+          <select class="l-select" id="fEndH" onchange="updatePreview()"></select>
+          <select class="l-select" id="fEndM" onchange="updatePreview()"></select>
+          <select class="l-select" id="fEndAMPM" onchange="updatePreview()"></select>
+        </div>
+      </div>
+
+      <!-- Lunch -->
+      <div class="l-field">
+        <div class="l-label">Lunch Break</div>
+        <select class="l-select" id="fLunch" onchange="updatePreview()">
+          <option value="0">None</option>
+          <option value="30">30 min</option>
+          <option value="45">45 min</option>
+          <option value="60" selected>60 min</option>
+          <option value="90">90 min</option>
+        </select>
+      </div>
+
+      <!-- Description -->
+      <div class="l-field">
+        <div class="l-label">Description (optional)</div>
+        <textarea class="l-textarea" id="fDesc" placeholder="Work performed…" oninput="updatePreview()"></textarea>
+      </div>
+
+      <!-- Live preview -->
+      <div class="l-preview" id="livePreview">
+        <div class="l-preview-row"><span class="l-preview-key">Date</span><span class="l-preview-val" id="pvDate">—</span></div>
+        <div class="l-preview-row"><span class="l-preview-key">Hours</span><span class="l-preview-val" id="pvHours">—</span></div>
+        <div class="l-preview-row"><span class="l-preview-key">Billable</span><span class="l-preview-val" id="pvBillable">—</span></div>
+        <div class="l-preview-row" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--l-border)">
+          <span class="l-preview-key">Total</span>
+          <span class="l-preview-val l-preview-total" id="pvTotal">—</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:8px">
+        <button class="l-btn l-btn-primary" style="flex:1" onclick="logEntry()">Log Entry</button>
+        <button class="l-btn l-btn-ghost" onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+
+    <!-- ── MAIN CONTENT ── -->
+    <div class="l-main">
+
+      <!-- PENDING TAB -->
+      <div id="tab-pending">
+        <div class="l-stats" id="pendingStats"></div>
+        <div id="pendingGroups"></div>
+        <div id="emptyPending" style="display:none;text-align:center;padding:60px 20px;color:var(--l-text-3)">
+          <div style="font-size:2rem;margin-bottom:12px">📋</div>
+          <div>No pending entries. Log your first entry in the sidebar.</div>
+        </div>
+      </div>
+
+      <!-- HISTORY TAB -->
+      <div id="tab-history" style="display:none">
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+          <div class="l-section-title" style="margin:0;border:none;padding:0;flex:1">Invoice History</div>
+          <select class="l-select" id="histClientFilter" onchange="renderHistory()" style="width:180px">
+            <option value="">All Clients</option>
+          </select>
+          <select class="l-select" id="histSort" onchange="renderHistory()" style="width:140px">
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
+        </div>
+        <div id="historyList"></div>
+        <div id="emptyHistory" style="display:none;text-align:center;padding:60px 20px;color:var(--l-text-3)">
+          <div style="font-size:2rem;margin-bottom:12px">🗂️</div>
+          <div>No invoiced records yet.</div>
+        </div>
+      </div>
+
+      <!-- SETTINGS TAB -->
+      <div id="tab-settings" style="display:none">
+        <div class="l-settings-grid">
+
+          <!-- Rate -->
+          <div class="l-settings-card">
+            <h3>Default Hourly Rate</h3>
+            <div class="l-field">
+              <div class="l-label">Rate ($/hr)</div>
+              <input class="l-input" id="sRate" type="number" min="0" step="0.01"/>
+            </div>
+            <button class="l-btn l-btn-primary" style="margin-top:12px;width:100%" onclick="saveRate()">Save Rate</button>
+          </div>
+
+          <!-- PIN -->
+          <div class="l-settings-card">
+            <h3>Security PIN</h3>
+            <div class="l-field">
+              <div class="l-label">New PIN</div>
+              <input class="l-input" id="sNewPin" type="password" inputmode="numeric" maxlength="10"/>
+            </div>
+            <div class="l-field" style="margin-top:10px">
+              <div class="l-label">Confirm PIN</div>
+              <input class="l-input" id="sConfirmPin" type="password" inputmode="numeric" maxlength="10"/>
+            </div>
+            <button class="l-btn l-btn-primary" style="margin-top:12px;width:100%" onclick="savePin()">Update PIN</button>
+          </div>
+
+          <!-- Clients -->
+          <div class="l-settings-card" style="grid-column:1/-1">
+            <h3>Clients & Rates</h3>
+            <div id="clientTable" style="margin-bottom:14px"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input class="l-input" id="newClientName" placeholder="Client name" style="flex:1;min-width:140px"/>
+              <input class="l-input" id="newClientRate" type="number" placeholder="Rate (blank=default)" style="width:160px"/>
+              <button class="l-btn l-btn-primary" onclick="addClient()">+ Add Client</button>
+            </div>
+          </div>
+
+          <!-- Data management -->
+          <div class="l-settings-card" style="grid-column:1/-1">
+            <h3>Data Management</h3>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="l-btn l-btn-ghost" onclick="exportJSON()">Export JSON</button>
+              <button class="l-btn l-btn-ghost" onclick="clearOverrideURLs()">Clear Saved URL & Token</button>
+              <button class="l-btn l-btn-danger" onclick="clearAllData()">Clear All Data</button>
+            </div>
+            <div style="margin-top:14px">
+              <div class="l-label" style="margin-bottom:6px">Script URL Override (dev)</div>
+              <input class="l-input" id="sScriptUrl" placeholder="Leave blank to use built-in"/>
+            </div>
+            <div style="margin-top:10px">
+              <div class="l-label" style="margin-bottom:6px">API Token Override (dev)</div>
+              <input class="l-input" id="sApiToken" type="password" placeholder="Leave blank to use built-in"/>
+            </div>
+            <button class="l-btn l-btn-ghost" style="margin-top:10px" onclick="saveOverrides()">Save Overrides</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Mobile bottom nav -->
+  <div class="l-bottom-nav">
+    <button class="l-bnav-btn" data-tab="pending" onclick="switchTab('pending')">
+      <span>📋</span><span>Pending</span>
+    </button>
+    <button class="l-bnav-btn center" onclick="openDrawer()">+</button>
+    <button class="l-bnav-btn" data-tab="history" onclick="switchTab('history')">
+      <span>🗂️</span><span>History</span>
+    </button>
+    <button class="l-bnav-btn" data-tab="settings" onclick="switchTab('settings')">
+      <span>⚙️</span><span>Settings</span>
+    </button>
+  </div>
+
+  <!-- Mobile drawer overlay + drawer -->
+  <div class="l-drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+  <div class="l-drawer" id="mobileDrawer" id="mobileDrawer"></div>
+
+</div><!-- /ledgerApp -->
+
+<!-- ── MODALS ── -->
+
+<!-- Edit Entry Modal -->
+<div class="l-modal-overlay" id="editModal">
+  <div class="l-modal">
+    <div class="l-modal-title">Edit Entry</div>
+    <div class="l-field"><div class="l-label">Client</div>
+      <select class="l-select" id="eClient"></select></div>
+    <div class="l-field" style="margin-top:12px"><div class="l-label">Date</div>
+      <div class="l-cal-wrap">
+        <div style="display:flex;gap:6px">
+          <input class="l-input" id="eDate" type="text" placeholder="MM-DD-YYYY" maxlength="10"
+            oninput="onDateInput(this)" onfocus="openCal('editCal')" style="flex:1" autocomplete="off"/>
+          <button class="l-btn l-btn-ghost" style="padding:8px 10px" onclick="toggleCal('editCal')">📅</button>
+        </div>
+        <div class="l-cal-popup" id="editCal"></div>
+      </div>
+    </div>
+    <div class="l-field" style="margin-top:12px"><div class="l-label">Start Time</div>
+      <div class="l-time-row">
+        <select class="l-select" id="eStartH"></select>
+        <select class="l-select" id="eStartM"></select>
+        <select class="l-select" id="eStartAMPM"></select>
+      </div></div>
+    <div class="l-field" style="margin-top:12px"><div class="l-label">End Time</div>
+      <div class="l-time-row">
+        <select class="l-select" id="eEndH"></select>
+        <select class="l-select" id="eEndM"></select>
+        <select class="l-select" id="eEndAMPM"></select>
+      </div></div>
+    <div class="l-field" style="margin-top:12px"><div class="l-label">Lunch Break</div>
+      <select class="l-select" id="eLunch">
+        <option value="0">None</option>
+        <option value="30">30 min</option>
+        <option value="45">45 min</option>
+        <option value="60">60 min</option>
+        <option value="90">90 min</option>
+      </select></div>
+    <div class="l-field" style="margin-top:12px"><div class="l-label">Description</div>
+      <textarea class="l-textarea" id="eDesc"></textarea></div>
+    <div class="l-modal-actions">
+      <button class="l-btn l-btn-ghost" onclick="closeModal('editModal')">Cancel</button>
+      <button class="l-btn l-btn-primary" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invoice Report Modal -->
+<div class="l-modal-overlay" id="invoiceModal">
+  <div class="l-modal">
+    <div class="l-modal-title">Invoice Description</div>
+    <div class="l-label" style="margin-bottom:8px">Copy and paste into Wave</div>
+    <textarea class="l-textarea" id="invoiceText" style="min-height:220px;font-size:0.8rem" readonly></textarea>
+    <div class="l-modal-actions">
+      <button class="l-btn l-btn-ghost" onclick="closeModal('invoiceModal')">Close</button>
+      <button class="l-btn l-btn-primary" onclick="copyInvoiceText()">Copy to Clipboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="l-toast-container" id="toastContainer"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════════════════════════════ -->
+<script src="../js/tools-registry.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.init();
+
+// ── Config (injected at build time by build.sh) ────────────────────────────
+const BUILT_SCRIPT_URL = '%%SCRIPT_URL%%';
+const BUILT_API_TOKEN  = '%%API_TOKEN%%';
+
+function getScriptURL() { return localStorage.getItem('ledger_script_url') || BUILT_SCRIPT_URL; }
+function getApiToken()  { return localStorage.getItem('ledger_api_token')  || BUILT_API_TOKEN;  }
+
+// ── State ──────────────────────────────────────────────────────────────────
+let state = {
+  pin: '1234',
+  rate: 75,
+  clients: [],
+  pending: [],
+  history: [],
+};
+let editingId   = null;
+let invoiceClient = null;
+let offlineQueue  = [];
+let isOnline      = navigator.onLine;
+let calViewDate   = new Date();
+
+// ── UID ───────────────────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ═══════════════════════════════════════════════════════════
+// LOCK SCREEN
+// ═══════════════════════════════════════════════════════════
+async function attemptUnlock() {
+  const pin = document.getElementById('pinInput').value.trim();
+  if (!pin) return;
+  const btn = document.getElementById('unlockBtn');
+  btn.textContent = 'Checking…';
+  btn.disabled = true;
+
+  let verified = false;
+  let source = 'sheets';
+
+  try {
+    const result = await api('getPin', {});
+    const sheetPin = result.pin ? String(result.pin).trim() : null;
+    if (sheetPin) {
+      localStorage.setItem('ledger_pin', sheetPin);
+      verified = (pin === sheetPin);
+    } else {
+      throw new Error('no pin in response');
+    }
+  } catch (e) {
+    // Fallback to cached PIN
+    const cached = localStorage.getItem('ledger_pin');
+    source = 'cache';
+    if (cached) {
+      verified = (pin === cached);
+    } else {
+      // No cache — allow default
+      verified = (pin === state.pin);
+      source = 'default';
+    }
+    document.getElementById('pinDebug').textContent =
+      `Using cached/default PIN (Sheets unreachable: ${e.message})`;
+  }
+
+  if (verified) {
+    sessionStorage.setItem('ledger_unlocked', '1');
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('ledgerApp').style.display  = 'block';
+    document.getElementById('pinDebug').textContent = '';
+    await loadAll();
+  } else {
+    const input = document.getElementById('pinInput');
+    document.getElementById('pinError').textContent =
+      `Incorrect PIN. (verified via ${source})`;
+    input.classList.add('shake');
+    input.value = '';
+    setTimeout(() => input.classList.remove('shake'), 500);
+  }
+  btn.textContent = 'Unlock';
+  btn.disabled = false;
+}
+
+function lockApp() {
+  sessionStorage.removeItem('ledger_unlocked');
+  document.getElementById('lockScreen').style.display = 'flex';
+  document.getElementById('ledgerApp').style.display  = 'none';
+  document.getElementById('pinInput').value = '';
+  document.getElementById('pinError').textContent = '';
+}
+
+// Check if already unlocked this session
+if (sessionStorage.getItem('ledger_unlocked')) {
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('ledgerApp').style.display  = 'block';
+}
+document.getElementById('pinInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') attemptUnlock();
+});
+
+// ═══════════════════════════════════════════════════════════
+// API LAYER
+// ═══════════════════════════════════════════════════════════
+async function api(action, payload) {
+  const SCRIPT_URL = getScriptURL();
+  if (!SCRIPT_URL || SCRIPT_URL === '%%SCRIPT_URL%%') {
+    throw new Error('Script URL not configured. Add it in Settings.');
+  }
+  const url = SCRIPT_URL + '?' + new URLSearchParams({
+    action,
+    payload: JSON.stringify(payload),
+    token: getApiToken(),
+  });
+  const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+  const json = await res.json();
+  if (json.ok === false) throw new Error(json.error || 'API error');
+  return json;
+}
+
+// Offline queue
+function enqueue(action, payload) {
+  offlineQueue.push({ action, payload, queuedAt: Date.now() });
+  localStorage.setItem('ledger_queue', JSON.stringify(offlineQueue));
+  updateConnBadge();
+}
+
+async function flushQueue() {
+  if (!offlineQueue.length || !isOnline) return;
+  const q = [...offlineQueue];
+  offlineQueue = [];
+  localStorage.setItem('ledger_queue', '[]');
+  updateConnBadge();
+  let failed = [];
+  for (const item of q) {
+    try {
+      setConnState('syncing');
+      await api(item.action, item.payload);
+    } catch(e) {
+      failed.push(item);
+    }
+  }
+  if (failed.length) {
+    offlineQueue = failed;
+    localStorage.setItem('ledger_queue', JSON.stringify(offlineQueue));
+    setConnState('offline');
+    toast(`${failed.length} changes failed to sync.`, 'error');
+  } else {
+    setConnState('online');
+    if (q.length) toast(`${q.length} offline change${q.length>1?'s':''} synced.`, 'success');
+  }
+  updateConnBadge();
+}
+
+async function apiWrite(action, payload) {
+  if (isOnline) {
+    try {
+      setConnState('syncing');
+      const result = await api(action, payload);
+      setConnState('online');
+      return result;
+    } catch(e) {
+      if (e.message !== 'offline-queued') {
+        enqueue(action, payload);
+        setConnState('offline');
+      }
+      throw new Error('offline-queued');
+    }
+  } else {
+    enqueue(action, payload);
+    throw new Error('offline-queued');
+  }
+}
+
+// Connection state
+function setConnState(s) {
+  const dot = document.getElementById('connDot');
+  dot.className = 'l-conn-dot ' + s;
+}
+function updateConnBadge() {
+  const badge = document.getElementById('connBadge');
+  const n = offlineQueue.length;
+  badge.textContent = n;
+  badge.classList.toggle('visible', n > 0);
+}
+
+window.addEventListener('online',  () => { isOnline = true;  flushQueue(); });
+window.addEventListener('offline', () => { isOnline = false; setConnState('offline'); });
+
+// ═══════════════════════════════════════════════════════════
+// INIT / LOAD
+// ═══════════════════════════════════════════════════════════
+async function loadAll() {
+  // Load offline queue from storage
+  try { offlineQueue = JSON.parse(localStorage.getItem('ledger_queue') || '[]'); }
+  catch { offlineQueue = []; }
+  updateConnBadge();
+
+  try {
+    setConnState('syncing');
+    const data = await api('loadAll', {});
+    state.rate     = data.rate    || 75;
+    state.clients  = data.clients || [];
+    state.pending  = data.pending || [];
+    state.history  = data.history || [];
+    if (data.pin) { state.pin = data.pin; localStorage.setItem('ledger_pin', data.pin); }
+    localStorage.setItem('ledger_cache', JSON.stringify(state));
+    setConnState('online');
+  } catch(e) {
+    // Try cache
+    const cached = localStorage.getItem('ledger_cache');
+    if (cached) {
+      try { Object.assign(state, JSON.parse(cached)); toast('Loaded from cache (offline)', 'error'); }
+      catch {}
+    }
+    setConnState('offline');
+  }
+
+  await flushQueue();
+  initForm();
+  renderAll();
+}
+
+function renderAll() {
+  renderPending();
+  renderHistory();
+  renderSettings();
+  updateRateBadge();
+}
+
+function updateRateBadge() {
+  document.getElementById('rateBadge').textContent = `$${state.rate}/hr`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════
+function switchTab(tab) {
+  ['pending','history','settings'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.l-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  document.querySelectorAll('.l-bnav-btn[data-tab]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  if (tab === 'history') renderHistory();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TIME SELECTS
+// ═══════════════════════════════════════════════════════════
+function fillTimeSelects(hId, mId, apId, defaultMin) {
+  const hSel  = document.getElementById(hId);
+  const mSel  = document.getElementById(mId);
+  const apSel = document.getElementById(apId);
+
+  hSel.innerHTML  = [1,2,3,4,5,6,7,8,9,10,11,12].map(h => `<option value="${h}">${h}</option>`).join('');
+  mSel.innerHTML  = ['00','15','30','45'].map(m => `<option value="${m}">${m}</option>`).join('');
+  apSel.innerHTML = `<option value="AM">AM</option><option value="PM">PM</option>`;
+
+  if (defaultMin !== undefined) setTimeSelects(hId, mId, apId, defaultMin);
+}
+
+function setTimeSelects(hId, mId, apId, totalMin) {
+  let h = Math.floor(totalMin / 60);
+  const m = Math.floor((totalMin % 60) / 15) * 15;
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  document.getElementById(hId).value  = h;
+  document.getElementById(mId).value  = String(m).padStart(2,'0');
+  document.getElementById(apId).value = ap;
+}
+
+function getTimeMin(hId, mId, apId) {
+  const h  = parseInt(document.getElementById(hId).value);
+  const m  = parseInt(document.getElementById(mId).value);
+  const ap = document.getElementById(apId).value;
+  let hours = h % 12 + (ap === 'PM' ? 12 : 0);
+  return hours * 60 + m;
+}
+
+function initForm() {
+  // Populate client select
+  populateClientSelects();
+
+  // Time defaults: 9am–5pm
+  fillTimeSelects('fStartH','fStartM','fStartAMPM', 9*60);
+  fillTimeSelects('fEndH',  'fEndM',  'fEndAMPM',  17*60);
+  fillTimeSelects('eStartH','eStartM','eStartAMPM', 9*60);
+  fillTimeSelects('eEndH',  'eEndM',  'eEndAMPM',  17*60);
+
+  // Default date to today
+  pickDate('today');
+
+  // Init calendars
+  buildCal('mainCal', null, d => { setDateInput('fDate', d); closeCal('mainCal'); });
+  buildCal('editCal', null, d => { setDateInput('eDate', d); closeCal('editCal'); });
+
+  updatePreview();
+}
+
+function populateClientSelects() {
+  const opts = state.clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  ['fClient','eClient'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts || '<option value="">— no clients —</option>';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// DATE UTILITIES
+// ═══════════════════════════════════════════════════════════
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function isoToDisplay(iso) { // YYYY-MM-DD → MM-DD-YYYY
+  if (!iso || iso.length < 10) return iso;
+  return iso.slice(5,7) + '-' + iso.slice(8,10) + '-' + iso.slice(0,4);
+}
+function displayToISO(s) { // MM-DD-YYYY → YYYY-MM-DD
+  if (!s || s.length < 10) return '';
+  return s.slice(6,10) + '-' + s.slice(0,2) + '-' + s.slice(3,5);
+}
+
+function pickDate(which) {
+  const today = new Date();
+  const d = which === 'yesterday' ? new Date(today - 86400000) : today;
+  const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  document.getElementById('fDate').value = isoToDisplay(iso);
+  document.getElementById('btnToday').classList.toggle('active', which === 'today');
+  document.getElementById('btnYesterday').classList.toggle('active', which === 'yesterday');
+  updatePreview();
+}
+
+function setDateInput(inputId, isoDate) {
+  document.getElementById(inputId).value = isoToDisplay(isoDate);
+  if (inputId === 'fDate') {
+    const today = todayISO();
+    const yest  = new Date(new Date() - 86400000);
+    const yISO  = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
+    document.getElementById('btnToday').classList.toggle('active', isoDate === today);
+    document.getElementById('btnYesterday').classList.toggle('active', isoDate === yISO);
+  }
+  updatePreview();
+}
+
+function onDateInput(input) {
+  let v = input.value.replace(/[^0-9]/g,'');
+  if (v.length > 2) v = v.slice(0,2) + '-' + v.slice(2);
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
+  input.value = v.slice(0,10);
+  updatePreview();
+}
+
+// ═══════════════════════════════════════════════════════════
+// CALENDAR PICKER
+// ═══════════════════════════════════════════════════════════
+function buildCal(calId, isoSelected, onSelect) {
+  const popup = document.getElementById(calId);
+  popup._onSelect = onSelect;
+  popup._selected = isoSelected;
+  renderCal(calId);
+}
+
+function renderCal(calId) {
+  const popup = document.getElementById(calId);
+  const vd    = calViewDate;
+  const today = todayISO();
+  const sel   = popup._selected;
+
+  const y = vd.getFullYear(), m = vd.getMonth();
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  let cells = '';
+  const dows = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  cells += dows.map(d => `<div class="l-cal-dow">${d}</div>`).join('');
+
+  for (let i = 0; i < firstDay; i++) cells += `<div class="l-cal-day empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cls = 'l-cal-day';
+    if (iso === today) cls += ' today';
+    if (iso === sel)   cls += ' selected';
+    cells += `<div class="${cls}" onclick="calDayClick('${calId}','${iso}')">${d}</div>`;
+  }
+
+  popup.innerHTML = `
+    <div class="l-cal-nav">
+      <button onclick="calNav(-1,'${calId}')">‹</button>
+      <span class="l-cal-month">${monthNames[m]} ${y}</span>
+      <button onclick="calNav(1,'${calId}')">›</button>
+    </div>
+    <div class="l-cal-grid">${cells}</div>`;
+}
+
+function calNav(dir, calId) {
+  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() + dir, 1);
+  renderCal(calId);
+}
+
+function calDayClick(calId, iso) {
+  const popup = document.getElementById(calId);
+  popup._selected = iso;
+  renderCal(calId);
+  if (popup._onSelect) popup._onSelect(iso);
+}
+
+function openCal(calId) {
+  document.querySelectorAll('.l-cal-popup').forEach(p => {
+    if (p.id !== calId) p.classList.remove('open');
+  });
+  document.getElementById(calId).classList.add('open');
+}
+function closeCal(calId) { document.getElementById(calId).classList.remove('open'); }
+function toggleCal(calId) {
+  const el = document.getElementById(calId);
+  if (el.classList.contains('open')) closeCal(calId);
+  else openCal(calId);
+}
+
+document.addEventListener('click', e => {
+  document.querySelectorAll('.l-cal-popup.open').forEach(popup => {
+    if (!popup.closest('.l-cal-wrap').contains(e.target)) closeCal(popup.id);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// LIVE PREVIEW
+// ═══════════════════════════════════════════════════════════
+function updatePreview() {
+  const dateDisplay = document.getElementById('fDate').value || '—';
+  const startMin    = getTimeMin('fStartH','fStartM','fStartAMPM');
+  const endMin      = getTimeMin('fEndH',  'fEndM',  'fEndAMPM');
+  const lunchMin    = parseInt(document.getElementById('fLunch').value) || 0;
+  const client      = document.getElementById('fClient').value;
+  const billMin     = Math.max(0, (endMin - startMin) - lunchMin);
+  const billHrs     = billMin / 60;
+  const rate        = getClientRate(client);
+  const total       = billHrs * rate;
+
+  const fmt = min => {
+    const h = Math.floor(min/60), m = min%60, ap = h>=12?'PM':'AM';
+    return `${h%12||12}:${String(m).padStart(2,'0')} ${ap}`;
+  };
+
+  document.getElementById('pvDate').textContent    = dateDisplay;
+  document.getElementById('pvHours').textContent   = endMin > startMin
+    ? `${fmt(startMin)} – ${fmt(endMin)} (${billHrs.toFixed(2)}h billable)`
+    : '—';
+  document.getElementById('pvBillable').textContent = `${billHrs.toFixed(2)}h @ $${rate}/hr`;
+  document.getElementById('pvTotal').textContent    = endMin > startMin
+    ? `$${total.toFixed(2)}`
+    : '—';
+}
+
+function getClientRate(name) {
+  const c = state.clients.find(c => c.name === name);
+  return (c && c.rate) ? c.rate : state.rate;
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOG ENTRY
+// ═══════════════════════════════════════════════════════════
+async function logEntry() {
+  const client   = document.getElementById('fClient').value;
+  const dateDisp = document.getElementById('fDate').value.trim();
+  const date     = displayToISO(dateDisp);
+  const startMin = getTimeMin('fStartH','fStartM','fStartAMPM');
+  const endMin   = getTimeMin('fEndH',  'fEndM',  'fEndAMPM');
+  const lunchMin = parseInt(document.getElementById('fLunch').value) || 0;
+  const desc     = document.getElementById('fDesc').value.trim();
+
+  if (!client)  return toast('Select a client.', 'error');
+  if (!date || date.length < 10) return toast('Enter a valid date.', 'error');
+  if (endMin <= startMin) return toast('End time must be after start time.', 'error');
+
+  const entry = { id: uid(), client, date, startMin, endMin, lunchMin, desc };
+  state.pending.push(entry);
+  renderPending();
+  clearForm();
+  closeDrawer();
+
+  try {
+    await apiWrite('addEntry', entry);
+  } catch(e) {
+    if (e.message === 'offline-queued') toast('Saved locally — will sync when online.', 'error');
+    else { toast('Save failed: ' + e.message, 'error'); state.pending.pop(); renderPending(); }
+  }
+}
+
+function clearForm() {
+  document.getElementById('fDesc').value = '';
+  pickDate('today');
+  setTimeSelects('fStartH','fStartM','fStartAMPM', 9*60);
+  setTimeSelects('fEndH',  'fEndM',  'fEndAMPM',  17*60);
+  document.getElementById('fLunch').value = '60';
+  updatePreview();
+}
+
+// ═══════════════════════════════════════════════════════════
+// PENDING VIEW
+// ═══════════════════════════════════════════════════════════
+function renderPending() {
+  const pending = state.pending;
+  const groups = {};
+  pending.forEach(e => {
+    if (!groups[e.client]) groups[e.client] = [];
+    groups[e.client].push(e);
+  });
+
+  // Stats
+  const totalHrs = pending.reduce((s,e) => s + calcBillable(e), 0);
+  const totalAmt = pending.reduce((s,e) => s + calcAmount(e), 0);
+  const clients  = Object.keys(groups).length;
+  document.getElementById('pendingStats').innerHTML = `
+    <div class="l-stat-card"><div class="l-stat-label">Entries</div><div class="l-stat-val">${pending.length}</div></div>
+    <div class="l-stat-card"><div class="l-stat-label">Total Hours</div><div class="l-stat-val">${totalHrs.toFixed(1)}</div></div>
+    <div class="l-stat-card"><div class="l-stat-label">Unbilled</div><div class="l-stat-val">$${totalAmt.toFixed(0)}</div><div class="l-stat-sub">${totalAmt.toFixed(2)}</div></div>
+    <div class="l-stat-card"><div class="l-stat-label">Clients</div><div class="l-stat-val">${clients}</div></div>`;
+
+  const container = document.getElementById('pendingGroups');
+  const empty     = document.getElementById('emptyPending');
+
+  if (!pending.length) { container.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  container.innerHTML = Object.entries(groups).map(([client, entries]) => {
+    const rate     = getClientRate(client);
+    const grpHrs   = entries.reduce((s,e) => s + calcBillable(e), 0);
+    const grpAmt   = entries.reduce((s,e) => s + calcAmount(e),   0);
+    const rows     = entries.sort((a,b) => a.date.localeCompare(b.date)).map(e => `
+      <tr>
+        <td class="mono">${isoToDisplay(e.date)}</td>
+        <td class="l-col-time mono">${fmtTimeRange(e)}</td>
+        <td>${e.desc || '<span style="color:var(--l-text-3)">—</span>'}</td>
+        <td class="mono">${calcBillable(e).toFixed(2)}h</td>
+        <td class="mono" style="color:var(--l-accent)">$${calcAmount(e).toFixed(2)}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button class="l-btn l-btn-ghost" style="padding:4px 8px;font-size:0.75rem" onclick="openEdit('${e.id}')">✎</button>
+            <button class="l-btn l-btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="deleteEntry('${e.id}')">×</button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+    return `
+      <div class="l-client-group">
+        <div class="l-client-header">
+          <span class="l-client-name">${client}</span>
+          <span class="l-client-rate">$${rate}/hr</span>
+          <span class="l-client-meta">${entries.length} entr${entries.length>1?'ies':'y'} · ${grpHrs.toFixed(2)}h · <span class="l-client-total">$${grpAmt.toFixed(2)}</span></span>
+        </div>
+        <div class="l-table-wrap">
+          <table class="l-table">
+            <thead><tr>
+              <th>Date</th>
+              <th class="l-col-time">Time</th>
+              <th>Description</th>
+              <th>Hours</th>
+              <th>Amount</th>
+              <th></th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="l-client-footer">
+          <button class="l-btn l-btn-ghost" onclick="openInvoiceReport('${client}')">Generate Invoice Text</button>
+          <button class="l-btn l-btn-primary" onclick="markInvoiced('${client}')">Mark as Invoiced</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function calcBillable(e) {
+  return Math.max(0, (e.endMin - e.startMin - e.lunchMin)) / 60;
+}
+function calcAmount(e) {
+  return calcBillable(e) * getClientRate(e.client);
+}
+function fmtTimeRange(e) {
+  const fmt = min => {
+    const h = Math.floor(min/60), m = min%60, ap = h>=12?'PM':'AM';
+    return `${h%12||12}:${String(m).padStart(2,'0')}${ap}`;
+  };
+  return `${fmt(e.startMin)}–${fmt(e.endMin)}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// EDIT ENTRY
+// ═══════════════════════════════════════════════════════════
+function openEdit(id) {
+  const e = state.pending.find(p => p.id === id);
+  if (!e) return;
+  editingId = id;
+  populateClientSelects();
+  document.getElementById('eClient').value = e.client;
+  setDateInput('eDate', e.date);
+  setTimeSelects('eStartH','eStartM','eStartAMPM', e.startMin);
+  setTimeSelects('eEndH',  'eEndM',  'eEndAMPM',   e.endMin);
+  document.getElementById('eLunch').value = String(e.lunchMin);
+  document.getElementById('eDesc').value  = e.desc || '';
+  // Rebuild edit calendar
+  buildCal('editCal', e.date, d => { setDateInput('eDate', d); closeCal('editCal'); });
+  openModal('editModal');
+}
+
+async function saveEdit() {
+  const id = editingId;
+  const idx = state.pending.findIndex(p => p.id === id);
+  if (idx === -1) return;
+
+  const updated = {
+    id,
+    client:   document.getElementById('eClient').value,
+    date:     displayToISO(document.getElementById('eDate').value),
+    startMin: getTimeMin('eStartH','eStartM','eStartAMPM'),
+    endMin:   getTimeMin('eEndH',  'eEndM',  'eEndAMPM'),
+    lunchMin: parseInt(document.getElementById('eLunch').value) || 0,
+    desc:     document.getElementById('eDesc').value.trim(),
+  };
+
+  // Optimistic update
+  state.pending[idx] = updated;
+  renderPending();
+  closeModal('editModal');
+
+  try {
+    await apiWrite('updateEntry', updated);
+  } catch(e) {
+    if (e.message === 'offline-queued') toast('Edit saved locally — will sync when online.');
+    else { toast('Update failed: ' + e.message, 'error'); await loadAll(); }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// DELETE ENTRY
+// ═══════════════════════════════════════════════════════════
+async function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  state.pending = state.pending.filter(e => e.id !== id);
+  renderPending();
+  try {
+    await apiWrite('deleteEntry', { id });
+  } catch(e) {
+    if (e.message === 'offline-queued') toast('Deletion queued — will sync when online.');
+    else { toast('Delete failed: ' + e.message, 'error'); await loadAll(); }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// INVOICE REPORT
+// ═══════════════════════════════════════════════════════════
+function openInvoiceReport(client) {
+  invoiceClient = client;
+  const entries = state.pending.filter(e => e.client === client)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  const rate    = getClientRate(client);
+  const total   = entries.reduce((s,e) => s + calcAmount(e), 0);
+  const hrs     = entries.reduce((s,e) => s + calcBillable(e), 0);
+
+  const lines = entries.map(e => {
+    const h = calcBillable(e).toFixed(2);
+    return `${isoToDisplay(e.date)} — ${h}h${e.desc ? ' — ' + e.desc : ''}`;
+  });
+
+  const text = [
+    `${client}`,
+    ``,
+    ...lines,
+    ``,
+    `Total: ${hrs.toFixed(2)} hours @ $${rate}/hr = $${total.toFixed(2)}`,
+  ].join('\n');
+
+  document.getElementById('invoiceText').value = text;
+  openModal('invoiceModal');
+}
+
+function copyInvoiceText() {
+  navigator.clipboard.writeText(document.getElementById('invoiceText').value)
+    .then(() => toast('Copied to clipboard!', 'success'));
+}
+
+// ═══════════════════════════════════════════════════════════
+// MARK AS INVOICED
+// ═══════════════════════════════════════════════════════════
+async function markInvoiced(client) {
+  const entries = state.pending.filter(e => e.client === client);
+  if (!entries.length) return;
+  if (!confirm(`Mark all ${entries.length} entries for "${client}" as invoiced?`)) return;
+
+  const rate_used = getClientRate(client);
+  const total     = entries.reduce((s,e) => s + calcAmount(e), 0);
+  const payload   = {
+    client,
+    date_invoiced: todayISO(),
+    entries,
+    total,
+    rate_used,
+  };
+
+  // Optimistic
+  state.pending = state.pending.filter(e => e.client !== client);
+  state.history.unshift({ id: uid(), ...payload });
+  renderPending();
+  renderHistory();
+
+  try {
+    await apiWrite('markInvoiced', payload);
+    toast(`Invoiced ${entries.length} entries for ${client}.`, 'success');
+  } catch(e) {
+    if (e.message === 'offline-queued') toast('Invoice queued — will sync when online.');
+    else { toast('Invoice failed: ' + e.message, 'error'); await loadAll(); }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HISTORY VIEW
+// ═══════════════════════════════════════════════════════════
+function renderHistory() {
+  const filterClient = document.getElementById('histClientFilter')?.value || '';
+  const sort         = document.getElementById('histSort')?.value || 'desc';
+
+  // Populate client filter options
+  const clients = [...new Set(state.history.map(h => h.client))];
+  const sel = document.getElementById('histClientFilter');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All Clients</option>' +
+      clients.map(c => `<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('');
+  }
+
+  let records = [...state.history];
+  if (filterClient) records = records.filter(r => r.client === filterClient);
+  records.sort((a,b) => {
+    const cmp = a.date_invoiced.localeCompare(b.date_invoiced);
+    return sort === 'desc' ? -cmp : cmp;
+  });
+
+  const empty = document.getElementById('emptyHistory');
+  const list  = document.getElementById('historyList');
+
+  if (!records.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  list.innerHTML = records.map((r, i) => {
+    const entries = Array.isArray(r.entries) ? r.entries :
+      (typeof r.entries === 'string' ? JSON.parse(r.entries) : []);
+    const num     = String(records.length - i).padStart(3,'0');
+    const entryRows = entries.map(e => `
+      <tr>
+        <td class="mono">${isoToDisplay(e.date)}</td>
+        <td>${e.desc || '<span style="color:var(--l-text-3)">—</span>'}</td>
+        <td class="mono">${calcBillable(e).toFixed(2)}h</td>
+        <td class="mono" style="color:var(--l-accent)">$${(calcBillable(e) * r.rate_used).toFixed(2)}</td>
+      </tr>`).join('');
+
+    return `
+      <div class="l-inv-record" id="inv-${r.id}">
+        <div class="l-inv-header" onclick="toggleInv('${r.id}')">
+          <span class="l-inv-badge">INV-${num}</span>
+          <span style="font-family:var(--l-font-display);font-weight:600">${r.client}</span>
+          <span style="color:var(--l-text-3);font-size:0.78rem">${isoToDisplay(r.date_invoiced)}</span>
+          <span style="color:var(--l-accent);font-size:0.85rem;margin-left:auto;margin-right:8px">$${Number(r.total).toFixed(2)}</span>
+          <span class="l-inv-chevron">▾</span>
+        </div>
+        <div class="l-inv-body" id="invbody-${r.id}">
+          <table class="l-table" style="margin-top:4px">
+            <thead><tr><th>Date</th><th>Description</th><th>Hours</th><th>Amount</th></tr></thead>
+            <tbody>${entryRows}</tbody>
+          </table>
+          <div style="margin-top:10px;font-size:0.8rem;color:var(--l-text-3)">
+            Rate at invoice: $${r.rate_used}/hr · Total: $${Number(r.total).toFixed(2)}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleInv(id) {
+  const rec  = document.getElementById('inv-'    + id);
+  const body = document.getElementById('invbody-' + id);
+  if (!rec || !body) return;
+  const isOpen = body.classList.toggle('open');
+  rec.classList.toggle('open', isOpen);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════
+function renderSettings() {
+  document.getElementById('sRate').value = state.rate;
+
+  // Override fields
+  document.getElementById('sScriptUrl').value = localStorage.getItem('ledger_script_url') || '';
+  document.getElementById('sApiToken').value  = localStorage.getItem('ledger_api_token')  || '';
+
+  // Client table
+  renderClientTable();
+}
+
+function renderClientTable() {
+  const rows = state.clients.map((c,i) => `
+    <div class="l-client-row">
+      <span style="flex:1;font-size:0.85rem">${c.name}</span>
+      <span style="color:var(--l-text-3);font-size:0.75rem;margin-right:4px">$</span>
+      <input class="l-inline-rate" type="number" value="${c.rate || ''}"
+        placeholder="${state.rate}" title="Rate (blank = default)"
+        onchange="updateClientRate(${i}, this.value)"/>
+      <span style="font-size:0.7rem;color:var(--l-text-3);margin-left:4px">/hr</span>
+      <button class="l-btn l-btn-danger" style="padding:3px 8px;font-size:0.75rem;margin-left:8px"
+        onclick="removeClient(${i})">Remove</button>
+    </div>`).join('');
+  document.getElementById('clientTable').innerHTML = rows ||
+    '<div style="color:var(--l-text-3);font-size:0.82rem">No clients yet.</div>';
+}
+
+async function saveRate() {
+  const r = parseFloat(document.getElementById('sRate').value);
+  if (isNaN(r) || r < 0) return toast('Enter a valid rate.', 'error');
+  state.rate = r;
+  updateRateBadge();
+  toast('Rate saved.', 'success');
+  try { await apiWrite('saveSettings', { rate: r, clients: state.clients, pin: state.pin }); }
+  catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
+}
+
+async function savePin() {
+  const np = document.getElementById('sNewPin').value.trim();
+  const cp = document.getElementById('sConfirmPin').value.trim();
+  if (!np) return toast('Enter a new PIN.', 'error');
+  if (np !== cp) return toast('PINs do not match.', 'error');
+  state.pin = np;
+  localStorage.setItem('ledger_pin', np);
+  document.getElementById('sNewPin').value = '';
+  document.getElementById('sConfirmPin').value = '';
+  toast('PIN updated.', 'success');
+  try { await apiWrite('saveSettings', { rate: state.rate, clients: state.clients, pin: np }); }
+  catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
+}
+
+async function addClient() {
+  const name = document.getElementById('newClientName').value.trim();
+  const rate = parseFloat(document.getElementById('newClientRate').value) || null;
+  if (!name) return toast('Enter a client name.', 'error');
+  if (state.clients.find(c => c.name === name)) return toast('Client already exists.', 'error');
+  state.clients.push({ name, rate });
+  document.getElementById('newClientName').value = '';
+  document.getElementById('newClientRate').value = '';
+  renderClientTable();
+  populateClientSelects();
+  try { await apiWrite('saveSettings', { rate: state.rate, clients: state.clients, pin: state.pin }); }
+  catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
+}
+
+async function updateClientRate(idx, val) {
+  state.clients[idx].rate = parseFloat(val) || null;
+  try { await apiWrite('saveSettings', { rate: state.rate, clients: state.clients, pin: state.pin }); }
+  catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
+}
+
+async function removeClient(idx) {
+  if (!confirm(`Remove "${state.clients[idx].name}"?`)) return;
+  state.clients.splice(idx, 1);
+  renderClientTable();
+  populateClientSelects();
+  try { await apiWrite('saveSettings', { rate: state.rate, clients: state.clients, pin: state.pin }); }
+  catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
+}
+
+function saveOverrides() {
+  const url = document.getElementById('sScriptUrl').value.trim();
+  const tok = document.getElementById('sApiToken').value.trim();
+  if (url) localStorage.setItem('ledger_script_url', url);
+  else localStorage.removeItem('ledger_script_url');
+  if (tok) localStorage.setItem('ledger_api_token', tok);
+  else localStorage.removeItem('ledger_api_token');
+  toast('Overrides saved. Reload to apply.', 'success');
+}
+
+function clearOverrideURLs() {
+  localStorage.removeItem('ledger_script_url');
+  localStorage.removeItem('ledger_api_token');
+  document.getElementById('sScriptUrl').value = '';
+  document.getElementById('sApiToken').value  = '';
+  toast('Cleared saved URL & Token.', 'success');
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ledger-export-${todayISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function clearAllData() {
+  if (!confirm('This will clear all cached data. The Google Sheet data is unaffected. Continue?')) return;
+  ['ledger_cache','ledger_queue','ledger_pin','ledger_script_url','ledger_api_token'].forEach(k =>
+    localStorage.removeItem(k));
+  toast('Local data cleared. Reloading…', 'success');
+  setTimeout(() => location.reload(), 1200);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MOBILE DRAWER
+// ═══════════════════════════════════════════════════════════
+function openDrawer() {
+  // Clone sidebar content into drawer
+  const drawer = document.getElementById('mobileDrawer');
+  drawer.innerHTML = '';
+  const handle = document.createElement('div');
+  handle.className = 'l-drawer-handle';
+  drawer.appendChild(handle);
+  const clone = document.getElementById('sidebarForm').cloneNode(true);
+  clone.removeAttribute('id');
+  clone.style.cssText = 'display:flex;flex-direction:column;gap:16px;flex:1';
+  drawer.appendChild(clone);
+
+  document.getElementById('drawerOverlay').classList.add('open');
+  drawer.classList.add('open');
+
+  // Swipe down to close
+  let startY = null;
+  drawer.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+  drawer.addEventListener('touchend', e => {
+    if (startY !== null && (e.changedTouches[0].clientY - startY) > 60) closeDrawer();
+    startY = null;
+  }, { passive: true });
+}
+
+function closeDrawer() {
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.getElementById('mobileDrawer').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.l-modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════
+function toast(msg, type = '') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'l-toast ' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ── Init on page load ─────────────────────────────────────────────────────
+if (sessionStorage.getItem('ledger_unlocked')) loadAll();
+</script>
+</body>
+</html>

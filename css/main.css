@@ -1,457 +1,143 @@
-/* ═══════════════════════════════════════════════════════════════════
-   SCOTTYTOOLS — Main Stylesheet
-   Aesthetic: Industrial utility. Dark. Dense. Functional.
-   Fonts: DM Mono + Barlow Condensed
-═══════════════════════════════════════════════════════════════════ */
+/**
+ * TOOL REGISTRY
+ * =============
+ * This is the single place to register all tools.
+ * To add a new tool:
+ *   1. Create a new file in /tools/your-tool.html
+ *   2. Add an entry to TOOLS below
+ *   3. That's it — it will appear in nav, search, and homepage automatically.
+ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Barlow+Condensed:wght@300;400;500;600;700&family=Barlow:wght@300;400;500&display=swap');
+const CATEGORIES = {
+  DIGITAL:    { id: 'digital',    label: 'Digital Tools',      icon: '◈' },
+  FOUNDRY:    { id: 'foundry',    label: 'Bronze Foundry',     icon: '⬟' },
+  CARPENTRY:  { id: 'carpentry',  label: 'Finish Carpentry',   icon: '⬧' },
+  REVIT:      { id: 'revit',      label: 'Revit & BIM',        icon: '⬨' },
+  GENERAL:    { id: 'general',    label: 'General',            icon: '◇' },
+};
 
-/* ── Variables ───────────────────────────────────────────────────── */
-:root {
-  --bg:          #0e0f0f;
-  --bg-1:        #141616;
-  --bg-2:        #1a1c1c;
-  --bg-3:        #202323;
-  --border:      #2a2e2e;
-  --border-hi:   #3d4444;
+const TOOLS = [
+  // ── DIGITAL TOOLS ─────────────────────────────────────────────────────────
+  {
+    id: 'aspect-ratio',
+    label: 'Aspect Ratio Calculator',
+    description: 'Calculate and convert between common video/image aspect ratios.',
+    category: CATEGORIES.DIGITAL,
+    path: 'tools/aspect-ratio.html',
+    tags: ['video', 'resolution', 'dimensions'],
+    featured: true,
+  },
+  {
+    id: 'color-converter',
+    label: 'Color Space Converter',
+    description: 'Convert between HEX, RGB, HSL, HSB, and CMYK color spaces.',
+    category: CATEGORIES.DIGITAL,
+    path: 'tools/color-converter.html',
+    tags: ['color', 'hex', 'rgb', 'hsl', 'cmyk', 'design'],
+    featured: false,
+  },
 
-  --text:        #d4d8d8;
-  --text-dim:    #7a8585;
-  --text-faint:  #404848;
+  // ── BRONZE FOUNDRY ────────────────────────────────────────────────────────
+  {
+    id: 'pour-weight',
+    label: 'Pour Weight Estimator',
+    description: 'Estimate bronze pour weight from wax weight using alloy ratios.',
+    category: CATEGORIES.FOUNDRY,
+    path: 'tools/pour-weight.html',
+    tags: ['bronze', 'casting', 'weight', 'alloy'],
+    featured: true,
+  },
 
-  --accent:      #e8a020;       /* amber — heat, forge */
-  --accent-dim:  #7a5210;
-  --accent-glow: rgba(232,160,32,0.15);
+  // ── FINISH CARPENTRY ──────────────────────────────────────────────────────
+  {
+    id: 'board-foot',
+    label: 'Board Foot Calculator',
+    description: 'Calculate board feet from dimensions for lumber purchasing.',
+    category: CATEGORIES.CARPENTRY,
+    path: 'tools/board-foot.html',
+    tags: ['lumber', 'wood', 'material'],
+    featured: true,
+  },
+  {
+    id: 'miter-angle',
+    label: 'Miter Angle Calculator',
+    description: 'Calculate miter and bevel angles for polygons and compound cuts.',
+    category: CATEGORIES.CARPENTRY,
+    path: 'tools/miter-angle.html',
+    tags: ['angle', 'miter', 'crown', 'saw'],
+    featured: false,
+  },
 
-  --cat-digital:    #5b9cf6;
-  --cat-foundry:   #e8a020;
-  --cat-carpentry: #4ade80;
-  --cat-revit:     #f87171;
-  --cat-general:   #94a3b8;
+  // ── GENERAL ───────────────────────────────────────────────────────────────
+  // ── GENERAL ───────────────────────────────────────────────────────────────
+  {
+    id: 'ledger',
+    label: 'Ledger',
+    description: 'Time tracking and invoice prep. Log work entries by client, generate invoice text, and mark as invoiced.',
+    category: CATEGORIES.GENERAL,
+    path: 'tools/ledger.html',
+    tags: ['time', 'invoice', 'billing', 'hours', 'client', 'work'],
+    featured: true,
+  },
+  {
+    id: 'folder-structure',
+    label: 'Folder Structure Generator',
+    description: 'Build a project folder structure with drag-to-reorder, presets, and .bat download.',
+    category: CATEGORIES.GENERAL,
+    path: 'tools/folder-structure.html',
+    tags: ['folders', 'project', 'setup', 'structure', 'organize'],
+    featured: true,
+  },
 
-  --radius:   3px;
-  --radius-lg: 6px;
-  --mono:     'DM Mono', monospace;
-  --sans:     'Barlow', sans-serif;
-  --cond:     'Barlow Condensed', sans-serif;
+  // ── REVIT & BIM ───────────────────────────────────────────────────────────
+  {
+    id: 'unit-converter',
+    label: 'Architectural Unit Converter',
+    description: "Convert between feet-inches, decimal feet, mm, and meters.",
+    category: CATEGORIES.REVIT,
+    path: 'tools/unit-converter.html',
+    tags: ['units', 'conversion', 'imperial', 'metric'],
+    featured: true,
+  },
+];
 
-  --nav-h: 52px;
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-/* ── Reset ───────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 14px; scroll-behavior: smooth; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  font-weight: 300;
-  line-height: 1.6;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
-a { color: inherit; text-decoration: none; }
-button { font-family: inherit; cursor: pointer; }
-input, select, textarea { font-family: var(--mono); }
-
-/* ── Nav ─────────────────────────────────────────────────────────── */
-.nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  height: var(--nav-h);
-  background: var(--bg-1);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center;
-  padding: 0 24px;
-  gap: 20px;
-}
-.nav-brand {
-  font-family: var(--cond);
-  font-weight: 700;
-  font-size: 1.2rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent);
-  display: flex; align-items: center; gap: 8px;
-}
-.nav-brand .mark {
-  width: 22px; height: 22px;
-  background: var(--accent);
-  display: grid; place-items: center;
-  border-radius: 2px;
-}
-.nav-brand .mark svg { width: 14px; height: 14px; fill: #0e0f0f; }
-.nav-search {
-  flex: 1; max-width: 340px;
-  position: relative;
-  margin-left: auto;
-}
-.nav-search input {
-  width: 100%;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 6px 10px 6px 32px;
-  font-size: 0.85rem;
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.2s;
-}
-.nav-search input:focus { border-color: var(--accent-dim); }
-.nav-search input::placeholder { color: var(--text-faint); }
-.nav-search .search-icon {
-  position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
-  color: var(--text-faint); font-size: 0.9rem; pointer-events: none;
-}
-.search-results {
-  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
-  background: var(--bg-2);
-  border: 1px solid var(--border-hi);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  display: none;
-  z-index: 200;
-}
-.search-results.visible { display: block; }
-.search-result-item {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  display: flex; align-items: center; gap: 10px;
-  transition: background 0.1s;
-}
-.search-result-item:last-child { border-bottom: none; }
-.search-result-item:hover { background: var(--bg-3); }
-.search-result-item .cat-dot {
-  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
-}
-.search-result-item .label { font-family: var(--cond); font-size: 0.95rem; }
-.search-result-item .desc { font-size: 0.75rem; color: var(--text-dim); margin-top: 1px; }
-.nav-home-btn {
-  font-family: var(--cond);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: transparent;
-  transition: all 0.15s;
-}
-.nav-home-btn:hover { border-color: var(--border-hi); color: var(--text); }
-
-/* ── Page shell ──────────────────────────────────────────────────── */
-.page { padding-top: var(--nav-h); min-height: 100vh; }
-.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-
-/* ── Section headers ─────────────────────────────────────────────── */
-.section-header {
-  display: flex; align-items: baseline; gap: 12px;
-  padding: 32px 0 16px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 20px;
-}
-.section-title {
-  font-family: var(--cond);
-  font-weight: 600;
-  font-size: 1.1rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.section-count {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--text-faint);
+function getFeaturedTools() {
+  const saved = getFavorites();
+  const featured = TOOLS.filter(t => t.featured);
+  const favorites = TOOLS.filter(t => saved.includes(t.id) && !t.featured);
+  return [...favorites, ...featured];
 }
 
-/* ── Hero ────────────────────────────────────────────────────────── */
-.hero {
-  padding: 48px 0 24px;
-  border-bottom: 1px solid var(--border);
-  position: relative;
-  overflow: hidden;
-}
-.hero::before {
-  content: 'SCOTTYTOOLS';
-  position: absolute; right: -10px; top: 50%; transform: translateY(-50%);
-  font-family: var(--cond); font-weight: 700; font-size: 10rem;
-  color: var(--text-faint); opacity: 0.04;
-  letter-spacing: -0.05em; pointer-events: none;
-  white-space: nowrap;
-}
-.hero-label {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 10px;
-}
-.hero-title {
-  font-family: var(--cond);
-  font-size: 3rem;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  margin-bottom: 8px;
-}
-.hero-title span { color: var(--accent); }
-.hero-sub {
-  color: var(--text-dim);
-  font-size: 0.9rem;
-  max-width: 480px;
+function getToolsByCategory(categoryId) {
+  return TOOLS.filter(t => t.category.id === categoryId);
 }
 
-/* ── Tool grid ───────────────────────────────────────────────────── */
-.tool-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  margin-bottom: 40px;
-}
-.tool-card {
-  background: var(--bg-1);
-  padding: 18px 20px;
-  display: flex; flex-direction: column; gap: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
-  position: relative;
-}
-.tool-card:hover { background: var(--bg-2); }
-.tool-card-top {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 8px;
-}
-.tool-card-cat {
-  display: flex; align-items: center; gap: 5px;
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.tool-card-cat .dot {
-  width: 5px; height: 5px; border-radius: 50%;
-}
-.tool-card-label {
-  font-family: var(--cond);
-  font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
-}
-.tool-card-desc {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  line-height: 1.5;
-  flex: 1;
-}
-.tool-card-fav {
-  background: none; border: none;
-  color: var(--text-faint);
-  font-size: 0.9rem;
-  padding: 2px;
-  line-height: 1;
-  transition: color 0.15s;
-  flex-shrink: 0;
-}
-.tool-card-fav:hover, .tool-card-fav.active { color: var(--accent); }
-.tool-card-arrow {
-  font-family: var(--mono); font-size: 0.7rem;
-  color: var(--text-faint);
-  margin-top: 4px;
-  display: flex; align-items: center; gap: 6px;
-  transition: color 0.15s;
-}
-.tool-card:hover .tool-card-arrow { color: var(--accent); }
-
-/* ── Category pills ──────────────────────────────────────────────── */
-.cat-pills {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  padding: 20px 0 0;
-}
-.cat-pill {
-  font-family: var(--cond);
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 4px 12px;
-  border-radius: 2px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex; align-items: center; gap: 6px;
-}
-.cat-pill .icon { font-size: 0.85rem; }
-.cat-pill:hover, .cat-pill.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-glow);
+function searchTools(query) {
+  const q = query.toLowerCase();
+  return TOOLS.filter(t =>
+    t.label.toLowerCase().includes(q) ||
+    t.description.toLowerCase().includes(q) ||
+    t.tags.some(tag => tag.includes(q))
+  );
 }
 
-/* ── Category color dots ─────────────────────────────────────────── */
-[data-cat="digital"]   { color: var(--cat-digital); }
-[data-cat="foundry"]   { color: var(--cat-foundry); }
-[data-cat="carpentry"] { color: var(--cat-carpentry); }
-[data-cat="revit"]     { color: var(--cat-revit); }
-[data-cat="general"]   { color: var(--cat-general); }
+// ── Favorites (localStorage) ─────────────────────────────────────────────────
 
-.dot[data-cat="digital"]   { background: var(--cat-digital); }
-.dot[data-cat="foundry"]   { background: var(--cat-foundry); }
-.dot[data-cat="carpentry"] { background: var(--cat-carpentry); }
-.dot[data-cat="revit"]     { background: var(--cat-revit); }
-.dot[data-cat="general"]   { background: var(--cat-general); }
-
-/* ── Tool page layout ────────────────────────────────────────────── */
-.tool-page { max-width: 800px; margin: 0 auto; padding: 32px 24px; }
-.tool-header {
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 28px;
-}
-.tool-breadcrumb {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--text-faint);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-  display: flex; align-items: center; gap: 8px;
-}
-.tool-breadcrumb a:hover { color: var(--text-dim); }
-.tool-title {
-  font-family: var(--cond);
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  margin-bottom: 6px;
-}
-.tool-description { color: var(--text-dim); font-size: 0.9rem; }
-
-/* ── Form elements ───────────────────────────────────────────────── */
-.field { margin-bottom: 16px; }
-.field label {
-  display: block;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-}
-.field input,
-.field select {
-  width: 100%;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  color: var(--text);
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.field input:focus,
-.field select:focus { border-color: var(--accent-dim); }
-.field select { appearance: none; cursor: pointer; }
-
-.btn {
-  font-family: var(--cond);
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 9px 20px;
-  border-radius: var(--radius);
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.btn-primary {
-  background: var(--accent);
-  color: #0e0f0f;
-}
-.btn-primary:hover { background: #f0ad30; }
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-}
-.btn-ghost:hover { border-color: var(--border-hi); color: var(--text); }
-
-/* ── Result panel ────────────────────────────────────────────────── */
-.result-panel {
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  margin-top: 20px;
-}
-.result-panel .result-label {
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  margin-bottom: 6px;
-}
-.result-panel .result-value {
-  font-family: var(--mono);
-  font-size: 2rem;
-  font-weight: 500;
-  color: var(--accent);
-}
-.result-panel .result-unit {
-  font-family: var(--mono);
-  font-size: 0.9rem;
-  color: var(--text-dim);
-  margin-left: 6px;
+function getFavorites() {
+  try { return JSON.parse(localStorage.getItem('st_favorites') || '[]'); }
+  catch { return []; }
 }
 
-/* ── Row layout for tool inputs ──────────────────────────────────── */
-.field-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
+function toggleFavorite(toolId) {
+  const favs = getFavorites();
+  const idx = favs.indexOf(toolId);
+  if (idx === -1) favs.push(toolId); else favs.splice(idx, 1);
+  localStorage.setItem('st_favorites', JSON.stringify(favs));
+  return favs.includes(toolId);
 }
 
-/* ── Footer ──────────────────────────────────────────────────────── */
-.site-footer {
-  margin-top: 60px;
-  padding: 20px 24px;
-  border-top: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
+function isFavorite(toolId) {
+  return getFavorites().includes(toolId);
 }
-
-/* ── Utility ─────────────────────────────────────────────────────── */
-.mt-0 { margin-top: 0; }
-.mt-1 { margin-top: 8px; }
-.mt-2 { margin-top: 16px; }
-.mt-3 { margin-top: 24px; }
-.hidden { display: none !important; }
-.text-accent { color: var(--accent); }
-.text-dim { color: var(--text-dim); }
-.mono { font-family: var(--mono); }
-
-/* ── Scrollbar ───────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
-
-/* ── Animations ──────────────────────────────────────────────────── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.fade-up { animation: fadeUp 0.4s ease both; }
-.fade-up-2 { animation: fadeUp 0.4s 0.1s ease both; }
-.fade-up-3 { animation: fadeUp 0.4s 0.2s ease both; }
