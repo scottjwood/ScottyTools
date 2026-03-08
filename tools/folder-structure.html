@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Folder Structure Generator — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css" />
+  <style>
+    /* ── Tool-specific styles ── */
+    .workspace {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    /* Presets panel */
+    .presets-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .presets-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 4px;
+    }
+    .preset-btn {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      text-align: left;
+      color: var(--text-dim);
+      font-family: var(--cond);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .preset-btn:hover { border-color: var(--border-hi); color: var(--text); }
+    .preset-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+    .preset-btn .preset-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+    .preset-btn:hover .preset-actions { opacity: 1; }
+    .preset-icon-btn {
+      background: none; border: none;
+      color: var(--text-faint);
+      font-size: 0.75rem;
+      padding: 2px 4px;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.15s;
+    }
+    .preset-icon-btn:hover { color: var(--accent); background: var(--accent-glow); }
+
+    /* Editor panel */
+    .editor-panel { display: flex; flex-direction: column; gap: 16px; }
+
+    /* Project name */
+    .project-name-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .project-name-row .field { flex: 1; margin: 0; }
+    .project-name-row input {
+      font-family: var(--mono);
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .project-name-row input::placeholder { text-transform: none; }
+
+    /* Folder list */
+    .folder-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .folder-item {
+      background: var(--bg-1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      height: 48px;
+      cursor: grab;
+      transition: background 0.12s;
+      user-select: none;
+      position: relative;
+    }
+    .folder-item:active { cursor: grabbing; }
+    .folder-item.dragging {
+      opacity: 0.4;
+    }
+    .folder-item.drag-over {
+      background: var(--bg-3);
+      border-top: 2px solid var(--accent);
+    }
+    .folder-item:hover { background: var(--bg-2); }
+
+    .drag-handle {
+      color: var(--text-faint);
+      font-size: 0.75rem;
+      cursor: grab;
+      flex-shrink: 0;
+      letter-spacing: -1px;
+    }
+    .folder-number {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--accent);
+      width: 22px;
+      flex-shrink: 0;
+    }
+    .folder-name-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      outline: none;
+      padding: 0;
+    }
+    .folder-name-input::placeholder { text-transform: none; color: var(--text-faint); }
+    .folder-name-input:focus { color: var(--accent); }
+
+    .folder-item-actions {
+      display: flex;
+      gap: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .folder-item:hover .folder-item-actions { opacity: 1; }
+    .folder-action-btn {
+      background: none; border: none;
+      color: var(--text-faint);
+      font-size: 0.8rem;
+      padding: 4px 6px;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.12s;
+    }
+    .folder-action-btn:hover { color: var(--accent); background: var(--accent-glow); }
+    .folder-action-btn.danger:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+
+    /* Add folder row */
+    .add-folder-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .add-folder-input {
+      flex: 1;
+      background: var(--bg-2);
+      border: 1px dashed var(--border-hi);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .add-folder-input::placeholder { text-transform: none; color: var(--text-faint); }
+    .add-folder-input:focus { border-color: var(--accent-dim); border-style: solid; }
+
+    /* Preview */
+    .preview-panel {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      line-height: 2;
+    }
+    .preview-root { color: var(--accent); font-size: 0.9rem; }
+    .preview-folder { color: var(--text-dim); padding-left: 4px; }
+    .preview-folder::before { content: '└─ '; color: var(--text-faint); }
+
+    /* Save preset modal */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      place-items: center;
+      z-index: 500;
+    }
+    .modal-overlay.visible { display: grid; }
+    .modal {
+      background: var(--bg-2);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 340px;
+      animation: fadeUp 0.2s ease;
+    }
+    .modal-title {
+      font-family: var(--cond);
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 680px) {
+      .workspace { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+
+  <main class="page">
+    <div class="tool-page" style="max-width:960px">
+      <div class="tool-header fade-up">
+        <div class="tool-breadcrumb">
+          <a href="../index.html">ScottyTools</a>
+          <span>/</span>
+          <span data-cat="general">General</span>
+        </div>
+        <h1 class="tool-title">Folder Structure Generator</h1>
+        <p class="tool-description">Build a project folder structure, drag to reorder, then download a .bat script that creates it instantly.</p>
+      </div>
+
+      <div class="workspace fade-up-2">
+
+        <!-- ── LEFT: Presets ── -->
+        <div class="presets-panel">
+          <div class="presets-label">Presets</div>
+          <div id="presetList"></div>
+          <button class="btn btn-ghost" style="margin-top:6px;font-size:0.8rem" onclick="saveAsPreset()">+ Save Current as Preset</button>
+        </div>
+
+        <!-- ── RIGHT: Editor ── -->
+        <div class="editor-panel">
+
+          <!-- Project name -->
+          <div class="project-name-row">
+            <div class="field">
+              <label>Project Name</label>
+              <input type="text" id="projectName" placeholder="MY_PROJECT_NAME" oninput="updatePreview()"/>
+            </div>
+          </div>
+
+          <!-- Folder list -->
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div class="presets-label" style="margin:0">Folders — drag to reorder</div>
+              <button class="folder-action-btn" onclick="clearFolders()" style="opacity:1;font-size:0.75rem;font-family:var(--mono)">clear all</button>
+            </div>
+            <div class="folder-list" id="folderList"></div>
+          </div>
+
+          <!-- Add folder -->
+          <div class="add-folder-row">
+            <input type="text" class="add-folder-input" id="newFolderInput"
+              placeholder="Type folder name and press Enter"
+              onkeydown="if(event.key==='Enter') addFolder()"/>
+            <button class="btn btn-primary" onclick="addFolder()">+ Add</button>
+          </div>
+
+          <!-- Preview + Download -->
+          <div>
+            <div class="presets-label">Preview</div>
+            <div class="preview-panel" id="preview"></div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="downloadBat()" style="font-size:1rem;padding:11px 28px">
+              ↓ Download .bat Script
+            </button>
+            <button class="btn btn-ghost" onclick="copyBat()">Copy Script</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Save preset modal -->
+  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="modal-title">Save as Preset</div>
+      <div class="field">
+        <label>Preset Name</label>
+        <input type="text" id="presetNameInput" placeholder="e.g. Design Project"
+          onkeydown="if(event.key==='Enter') confirmSavePreset()"/>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" onclick="confirmSavePreset()">Save</button>
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/tools-registry.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    Nav.init();
+
+    // ── Default presets ───────────────────────────────────────────────────────
+    const DEFAULT_PRESETS = [
+      {
+        id: 'design',
+        name: 'Graphic / Design',
+        folders: ['01_INCOMING','02_AI','03_PSD','04_EXPORTS','05_REFERENCE','06_OUTGOING'],
+      },
+      {
+        id: '3d',
+        name: '3D / CG',
+        folders: ['01_INCOMING','02_SCENE','03_ASSETS','04_TEXTURES','05_RENDERS','06_COMP','07_REFERENCE','08_OUTGOING'],
+      },
+      {
+        id: 'revit',
+        name: 'Revit / BIM',
+        folders: ['01_INCOMING','02_REVIT','03_CAD','04_EXPORTS','05_SHEETS','06_REFERENCE','07_OUTGOING'],
+      },
+    ];
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let folders = [...DEFAULT_PRESETS[0].folders];
+    let activePresetId = 'design';
+    let dragSrcIdx = null;
+
+    // ── Persist presets in localStorage ──────────────────────────────────────
+    function loadPresets() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('st_folder_presets') || 'null');
+        return saved || DEFAULT_PRESETS;
+      } catch { return DEFAULT_PRESETS; }
+    }
+
+    function savePresets(presets) {
+      localStorage.setItem('st_folder_presets', JSON.stringify(presets));
+    }
+
+    // ── Render presets sidebar ────────────────────────────────────────────────
+    function renderPresets() {
+      const presets = loadPresets();
+      const container = document.getElementById('presetList');
+      container.innerHTML = presets.map(p => `
+        <button class="preset-btn ${p.id === activePresetId ? 'active' : ''}"
+          onclick="loadPreset('${p.id}')">
+          <span>${p.name}</span>
+          <span class="preset-actions">
+            <span class="preset-icon-btn" onclick="event.stopPropagation();overwritePreset('${p.id}')" title="Overwrite with current">↑</span>
+            <span class="preset-icon-btn danger" onclick="event.stopPropagation();deletePreset('${p.id}')" title="Delete preset">✕</span>
+          </span>
+        </button>`).join('');
+    }
+
+    function loadPreset(id) {
+      const presets = loadPresets();
+      const preset = presets.find(p => p.id === id);
+      if (!preset) return;
+      folders = [...preset.folders];
+      activePresetId = id;
+      renderPresets();
+      renderFolders();
+      updatePreview();
+    }
+
+    function overwritePreset(id) {
+      const presets = loadPresets();
+      const idx = presets.findIndex(p => p.id === id);
+      if (idx === -1) return;
+      presets[idx].folders = [...folders];
+      savePresets(presets);
+      renderPresets();
+    }
+
+    function deletePreset(id) {
+      const presets = loadPresets();
+      const filtered = presets.filter(p => p.id !== id);
+      savePresets(filtered);
+      if (activePresetId === id) activePresetId = null;
+      renderPresets();
+    }
+
+    // ── Save as new preset ────────────────────────────────────────────────────
+    function saveAsPreset() {
+      document.getElementById('presetNameInput').value = '';
+      document.getElementById('modalOverlay').classList.add('visible');
+      setTimeout(() => document.getElementById('presetNameInput').focus(), 50);
+    }
+
+    function confirmSavePreset() {
+      const name = document.getElementById('presetNameInput').value.trim();
+      if (!name) return;
+      const presets = loadPresets();
+      const id = 'custom_' + Date.now();
+      presets.push({ id, name, folders: [...folders] });
+      savePresets(presets);
+      activePresetId = id;
+      renderPresets();
+      closeModal();
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('visible');
+    }
+
+    // ── Folder rendering ──────────────────────────────────────────────────────
+    function renderFolders() {
+      const list = document.getElementById('folderList');
+      list.innerHTML = folders.map((f, i) => `
+        <div class="folder-item"
+          draggable="true"
+          data-idx="${i}"
+          ondragstart="onDragStart(event,${i})"
+          ondragover="onDragOver(event,${i})"
+          ondragleave="onDragLeave(event)"
+          ondrop="onDrop(event,${i})"
+          ondragend="onDragEnd()">
+          <span class="drag-handle">⠿</span>
+          <span class="folder-number">${String(i+1).padStart(2,'0')}</span>
+          <input class="folder-name-input" type="text"
+            value="${f}"
+            data-idx="${i}"
+            oninput="onFolderRename(${i}, this.value)"
+            onblur="onFolderRenameBlur(${i}, this.value)"/>
+          <div class="folder-item-actions">
+            <button class="folder-action-btn" onclick="moveFolder(${i},-1)" title="Move up" ${i===0?'style="opacity:0.2;pointer-events:none"':''}>↑</button>
+            <button class="folder-action-btn" onclick="moveFolder(${i},1)" title="Move down" ${i===folders.length-1?'style="opacity:0.2;pointer-events:none"':''}>↓</button>
+            <button class="folder-action-btn danger" onclick="removeFolder(${i})" title="Remove">✕</button>
+          </div>
+        </div>`).join('');
+    }
+
+    function onFolderRename(idx, val) {
+      folders[idx] = val.toUpperCase();
+      updatePreview();
+    }
+
+    function onFolderRenameBlur(idx, val) {
+      folders[idx] = val.toUpperCase().trim();
+      renderFolders();
+      updatePreview();
+    }
+
+    function moveFolder(idx, dir) {
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= folders.length) return;
+      [folders[idx], folders[newIdx]] = [folders[newIdx], folders[idx]];
+      renderFolders();
+      updatePreview();
+    }
+
+    function removeFolder(idx) {
+      folders.splice(idx, 1);
+      renderFolders();
+      updatePreview();
+    }
+
+    function clearFolders() {
+      folders = [];
+      renderFolders();
+      updatePreview();
+    }
+
+    function addFolder() {
+      const input = document.getElementById('newFolderInput');
+      const val = input.value.trim().toUpperCase();
+      if (!val) return;
+      // Auto-number if it doesn't start with a number prefix
+      let name = val;
+      if (!/^\d+_/.test(name)) {
+        const num = String(folders.length + 1).padStart(2, '0');
+        name = `${num}_${name}`;
+      }
+      folders.push(name);
+      input.value = '';
+      input.focus();
+      renderFolders();
+      updatePreview();
+    }
+
+    // ── Drag and drop ─────────────────────────────────────────────────────────
+    function onDragStart(e, idx) {
+      dragSrcIdx = idx;
+      e.currentTarget.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function onDragOver(e, idx) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('drag-over'));
+      if (idx !== dragSrcIdx) e.currentTarget.classList.add('drag-over');
+    }
+
+    function onDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function onDrop(e, idx) {
+      e.preventDefault();
+      if (dragSrcIdx === null || dragSrcIdx === idx) return;
+      const moved = folders.splice(dragSrcIdx, 1)[0];
+      folders.splice(idx, 0, moved);
+      dragSrcIdx = null;
+      renderFolders();
+      updatePreview();
+    }
+
+    function onDragEnd() {
+      dragSrcIdx = null;
+      document.querySelectorAll('.folder-item').forEach(el => {
+        el.classList.remove('dragging', 'drag-over');
+      });
+    }
+
+    // ── Preview ───────────────────────────────────────────────────────────────
+    function updatePreview() {
+      const name = (document.getElementById('projectName').value.trim().toUpperCase() || 'PROJECT_NAME');
+      const lines = [`<span class="preview-root">📁 ${name}/</span>`];
+      folders.forEach(f => {
+        if (f.trim()) lines.push(`<span class="preview-folder">📁 ${f}/</span>`);
+      });
+      document.getElementById('preview').innerHTML = lines.join('\n');
+    }
+
+    // ── Generate .bat script ──────────────────────────────────────────────────
+    function generateBat() {
+      const name = (document.getElementById('projectName').value.trim().toUpperCase() || 'PROJECT_NAME')
+        .replace(/[<>:"/\\|?*]/g, '_');
+      const validFolders = folders.filter(f => f.trim());
+
+      let bat = `@echo off\r\n`;
+      bat += `REM ScottyTools — Folder Structure Generator\r\n`;
+      bat += `REM Generated: ${new Date().toLocaleDateString()}\r\n`;
+      bat += `REM Project: ${name}\r\n`;
+      bat += `\r\n`;
+      bat += `set PROJECT=${name}\r\n`;
+      bat += `\r\n`;
+      bat += `echo Creating project structure for %PROJECT%...\r\n`;
+      bat += `\r\n`;
+      bat += `mkdir "%PROJECT%"\r\n`;
+      validFolders.forEach(f => {
+        const safe = f.trim().replace(/[<>:"/\\|?*]/g, '_');
+        bat += `mkdir "%PROJECT%\\${safe}"\r\n`;
+      });
+      bat += `\r\n`;
+      bat += `echo.\r\n`;
+      bat += `echo Done! Folder structure created:\r\n`;
+      bat += `echo %PROJECT%\\\r\n`;
+      validFolders.forEach(f => {
+        bat += `echo    ${f.trim()}\\\r\n`;
+      });
+      bat += `\r\n`;
+      bat += `pause\r\n`;
+      return { bat, name };
+    }
+
+    function downloadBat() {
+      const { bat, name } = generateBat();
+      const blob = new Blob([bat], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `create_${name}.bat`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function copyBat() {
+      const { bat } = generateBat();
+      navigator.clipboard.writeText(bat).then(() => {
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 1500);
+      });
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    renderPresets();
+    renderFolders();
+    updatePreview();
+  </script>
+</body>
+</html>

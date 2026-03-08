@@ -68,6 +68,17 @@ const TOOLS = [
     featured: false,
   },
 
+  // ── GENERAL ───────────────────────────────────────────────────────────────
+  {
+    id: 'folder-structure',
+    label: 'Folder Structure Generator',
+    description: 'Build a project folder structure with drag-to-reorder, presets, and .bat download.',
+    category: CATEGORIES.GENERAL,
+    path: 'tools/folder-structure.html',
+    tags: ['folders', 'project', 'setup', 'structure', 'organize'],
+    featured: true,
+  },
+
   // ── REVIT & BIM ───────────────────────────────────────────────────────────
   {
     id: 'unit-converter',
