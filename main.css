@@ -23,8 +23,7 @@
   --accent-dim:  #7a5210;
   --accent-glow: rgba(232,160,32,0.15);
 
-  --cat-graphic:   #5b9cf6;
-  --cat-3d:        #a78bfa;
+  --cat-digital:    #5b9cf6;
   --cat-foundry:   #e8a020;
   --cat-carpentry: #4ade80;
   --cat-revit:     #f87171;
@@ -296,15 +295,13 @@ input, select, textarea { font-family: var(--mono); }
 }
 
 /* ── Category color dots ─────────────────────────────────────────── */
-[data-cat="graphic"]   { color: var(--cat-graphic); }
-[data-cat="3d"]        { color: var(--cat-3d); }
+[data-cat="digital"]   { color: var(--cat-digital); }
 [data-cat="foundry"]   { color: var(--cat-foundry); }
 [data-cat="carpentry"] { color: var(--cat-carpentry); }
 [data-cat="revit"]     { color: var(--cat-revit); }
 [data-cat="general"]   { color: var(--cat-general); }
 
-.dot[data-cat="graphic"]   { background: var(--cat-graphic); }
-.dot[data-cat="3d"]        { background: var(--cat-3d); }
+.dot[data-cat="digital"]   { background: var(--cat-digital); }
 .dot[data-cat="foundry"]   { background: var(--cat-foundry); }
 .dot[data-cat="carpentry"] { background: var(--cat-carpentry); }
 .dot[data-cat="revit"]     { background: var(--cat-revit); }

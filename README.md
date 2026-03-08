@@ -13,7 +13,7 @@ A lightweight, zero-cost web app housing personal calculators for design, fabric
   id: 'your-tool',          // unique slug, must match filename
   label: 'Your Tool Name',
   description: 'One sentence description.',
-  category: CATEGORIES.CARPENTRY,  // pick a category
+  category: CATEGORIES.CARPENTRY,  // pick: DIGITAL | FOUNDRY | CARPENTRY | REVIT | GENERAL
   path: 'tools/your-tool.html',
   tags: ['keyword', 'another'],
   featured: false,           // true = pinned on homepage
@@ -83,16 +83,8 @@ API keys NEVER appear in your frontend code.
 
 ## Planned Tools (Ideas)
 
-### Graphic & Motion
-- [ ] Timecode calculator (add/subtract, frame rate convert)
-- [ ] Color space converter (hex, RGB, HSL, CMYK)
-- [ ] Safe area / title safe overlay reference
-- [ ] DPI/PPI calculator
-
-### 3D & VFX
-- [ ] Camera lens equivalence (FOV calculator)
-- [ ] Scale reference (real world → scene units)
-- [ ] Render time estimator
+### Digital Tools
+- [ ] Color space converter (HEX, RGB, HSL, HSB, CMYK)
 
 ### Bronze Foundry
 - [ ] Alloy melt charge calculator (ingot + remelt)

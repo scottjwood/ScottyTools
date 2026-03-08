@@ -9,8 +9,7 @@
  */
 
 const CATEGORIES = {
-  GRAPHIC:    { id: 'graphic',    label: 'Graphic & Motion',   icon: '◈' },
-  THREED:     { id: '3d',         label: '3D & VFX',           icon: '⬡' },
+  DIGITAL:    { id: 'digital',    label: 'Digital Tools',      icon: '◈' },
   FOUNDRY:    { id: 'foundry',    label: 'Bronze Foundry',     icon: '⬟' },
   CARPENTRY:  { id: 'carpentry',  label: 'Finish Carpentry',   icon: '⬧' },
   REVIT:      { id: 'revit',      label: 'Revit & BIM',        icon: '⬨' },
@@ -18,23 +17,23 @@ const CATEGORIES = {
 };
 
 const TOOLS = [
-  // ── GRAPHIC & MOTION ──────────────────────────────────────────────────────
+  // ── DIGITAL TOOLS ─────────────────────────────────────────────────────────
   {
     id: 'aspect-ratio',
     label: 'Aspect Ratio Calculator',
     description: 'Calculate and convert between common video/image aspect ratios.',
-    category: CATEGORIES.GRAPHIC,
+    category: CATEGORIES.DIGITAL,
     path: 'tools/aspect-ratio.html',
     tags: ['video', 'resolution', 'dimensions'],
     featured: true,
   },
   {
-    id: 'fps-converter',
-    label: 'Frame Rate Converter',
-    description: 'Convert frame counts between different frame rates for conform workflows.',
-    category: CATEGORIES.GRAPHIC,
-    path: 'tools/fps-converter.html',
-    tags: ['video', 'timecode', 'conform'],
+    id: 'color-converter',
+    label: 'Color Space Converter',
+    description: 'Convert between HEX, RGB, HSL, HSB, and CMYK color spaces.',
+    category: CATEGORIES.DIGITAL,
+    path: 'tools/color-converter.html',
+    tags: ['color', 'hex', 'rgb', 'hsl', 'cmyk', 'design'],
     featured: false,
   },
 
