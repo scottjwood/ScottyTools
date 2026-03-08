@@ -1,4 +1,4 @@
-# TOOLBOX — Personal Utility Suite
+# SCOTTYTOOLS — Personal Utility Suite
 
 A lightweight, zero-cost web app housing personal calculators for design, fabrication, and construction work.
 
@@ -26,7 +26,7 @@ A lightweight, zero-cost web app housing personal calculators for design, fabric
 ## Project Structure
 
 ```
-toolbox/
+scottytools/
 ├── index.html              ← Landing page
 ├── css/
 │   └── main.css            ← All styles + CSS variables
@@ -47,7 +47,7 @@ toolbox/
 
 ### Option A: Drag & Drop (fastest)
 1. Go to [netlify.com](https://netlify.com) → Log in
-2. Drag the entire `toolbox/` folder onto the deploy zone
+2. Drag the entire `scottytools/` folder onto the deploy zone
 3. Done — live URL in ~30 seconds
 
 ### Option B: GitHub (recommended for ongoing use)

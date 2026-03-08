@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!--
+    TOOL TEMPLATE
+    ─────────────
+    1. Copy this file to tools/your-tool-name.html
+    2. Update the <title> tag
+    3. Add your entry to js/tools-registry.js
+    4. Build your tool below the "TOOL CONTENT" comment
+  -->
+  <title>Tool Name — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+  <!-- Nav is injected automatically — don't modify this div -->
+  <div id="nav-placeholder"></div>
+
+  <main class="page">
+    <div class="tool-page">
+
+      <!-- ── TOOL HEADER ─────────────────────────────────────────── -->
+      <div class="tool-header fade-up">
+        <div class="tool-breadcrumb">
+          <a href="../index.html">ScottyTools</a>
+          <span>/</span>
+          <!-- Change data-cat to match your category id:
+               graphic | 3d | foundry | carpentry | revit | general -->
+          <span data-cat="general">Category Name</span>
+        </div>
+        <h1 class="tool-title">Tool Name</h1>
+        <p class="tool-description">One to two sentences describing what this tool does.</p>
+      </div>
+
+      <!-- ── TOOL CONTENT ────────────────────────────────────────── -->
+      <div class="fade-up-2">
+
+        <!-- Input fields -->
+        <div class="field-row">
+          <div class="field">
+            <label>Input Label</label>
+            <input type="number" id="inputA" placeholder="0" oninput="calculate()"/>
+          </div>
+          <div class="field">
+            <label>Second Input</label>
+            <input type="number" id="inputB" placeholder="0" oninput="calculate()"/>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button class="btn btn-primary" onclick="calculate()">Calculate</button>
+          <button class="btn btn-ghost" onclick="reset()">Reset</button>
+        </div>
+
+        <!-- Result display -->
+        <div class="result-panel mt-2">
+          <div class="result-label">Result</div>
+          <div>
+            <span class="result-value" id="result">—</span>
+            <span class="result-unit">units</span>
+          </div>
+        </div>
+
+      </div>
+      <!-- ── END TOOL CONTENT ────────────────────────────────────── -->
+
+    </div>
+  </main>
+
+  <!-- Always include both scripts -->
+  <script src="../js/tools-registry.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    // Always call Nav.init() first
+    Nav.init();
+
+    function calculate() {
+      const a = parseFloat(document.getElementById('inputA').value) || 0;
+      const b = parseFloat(document.getElementById('inputB').value) || 0;
+
+      // Your calculation here
+      const result = a + b; // placeholder
+
+      document.getElementById('result').textContent = result.toFixed(2);
+    }
+
+    function reset() {
+      document.getElementById('inputA').value = '';
+      document.getElementById('inputB').value = '';
+      document.getElementById('result').textContent = '—';
+    }
+  </script>
+</body>
+</html>
