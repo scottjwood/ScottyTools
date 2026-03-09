@@ -14,6 +14,23 @@ const CATEGORIES = {
   GENERAL:  { id: 'general',  label: 'General',        icon: '◇' },
 };
 
+// ── Tool icons (SVG path data, 24x24 viewBox, stroke-based) ─────────────────
+const TOOL_ICONS = {
+  'unit-converter': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-5 5 5 5"/><path d="M3 8h13a5 5 0 0 1 0 10h-1"/><path d="M16 21l5-5-5-5"/></svg>`,
+  'color-converter': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/></svg>`,
+  'flask-investment': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6m-5 0v6l-4 9a1 1 0 0 0 .9 1.5h10.2a1 1 0 0 0 .9-1.5l-4-9V3"/><path d="M6.5 14.5h11"/></svg>`,
+  'pour-weight': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l3 6H9l3-6z"/><rect x="7" y="9" width="10" height="6" rx="1"/><path d="M10 15v5m4-5v5m-6 0h8"/><path d="M17 12h2a1 1 0 0 1 1 1v1"/></svg>`,
+  'ledger': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/><path d="M13 13h4m-4 4h4"/></svg>`,
+  'folder-structure': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 13l2 2 4-4"/></svg>`,
+  'tip-calculator': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M7 7h8.5a3.5 3.5 0 0 1 0 7H7"/><path d="M7 14h9"/></svg>`,
+  'tasks': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+};
+
+function getToolIcon(id) {
+  return TOOL_ICONS[id] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01"/></svg>`;
+}
+
+
 const TOOLS = [
   // ── DIGITAL TOOLS ─────────────────────────────────────────────────────────
   {

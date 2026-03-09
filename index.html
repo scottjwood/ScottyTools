@@ -113,13 +113,14 @@
       transform: scale(0.98);
     }
     .drag-handle {
-      position: absolute; top: 8px; left: 10px;
+      position: absolute; top: 50%; right: 10px;
+      transform: translateY(-50%);
       font-size: 0.65rem; color: var(--text-3);
       opacity: 0; transition: opacity 150ms ease;
       pointer-events: none; letter-spacing: 0.05em;
       user-select: none;
     }
-    .tool-card:hover .drag-handle { opacity: 0.5; }
+    .tool-card:hover .drag-handle { opacity: 0.4; }
     .tool-card { position: relative; }
   </style>
 </head>
@@ -220,24 +221,27 @@
 
     // ── Render a tool card ───────────────────────────────────────────
     function toolCard(tool, gridKey) {
-      const fav = isFavorite(tool.id);
+      const fav  = isFavorite(tool.id);
+      const icon = getToolIcon(tool.id);
       return `
         <div class="tool-card" draggable="true"
           data-id="${tool.id}" data-grid="${gridKey}"
           onclick="location.href='${tool.path}'">
           <span class="drag-handle">⠿⠿</span>
-          <div class="tool-card-top">
-            <div class="tool-card-cat">
-              <span class="dot" data-cat="${tool.category.id}"></span>
-              <span data-cat="${tool.category.id}">${tool.category.label}</span>
+          <div class="tool-card-icon">${icon}</div>
+          <div class="tool-card-body">
+            <div class="tool-card-top">
+              <div class="tool-card-cat">
+                <span class="dot" data-cat="${tool.category.id}"></span>
+                <span data-cat="${tool.category.id}">${tool.category.label}</span>
+              </div>
+              <button class="tool-card-fav ${fav ? 'active' : ''}"
+                onclick="event.stopPropagation(); toggleFavUI('${tool.id}')"
+                title="${fav ? 'Unpin from top' : 'Pin to top'}">★</button>
             </div>
-            <button class="tool-card-fav ${fav ? 'active' : ''}"
-              onclick="event.stopPropagation(); toggleFavUI('${tool.id}')"
-              title="${fav ? 'Unpin from top' : 'Pin to top'}">★</button>
+            <div class="tool-card-label">${tool.label}</div>
+            <div class="tool-card-desc">${tool.description}</div>
           </div>
-          <div class="tool-card-label">${tool.label}</div>
-          <div class="tool-card-desc">${tool.description}</div>
-          <div class="tool-card-arrow">→ open tool</div>
         </div>`;
     }
 
