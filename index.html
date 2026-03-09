@@ -29,6 +29,17 @@
         <!-- dynamically filled -->
       </div>
 
+      <!-- Ledger hero card -->
+      <div class="ledger-hero-card fade-up-2" onclick="location.href='tools/ledger.html'" id="ledgerHeroCard">
+        <div class="ledger-hero-icon">⬡</div>
+        <div class="ledger-hero-body">
+          <div class="ledger-hero-eyebrow">Daily Driver</div>
+          <div class="ledger-hero-title">Ledger</div>
+          <div class="ledger-hero-desc">Time tracking and invoice prep. Log work entries by client, generate invoice text, and mark as invoiced.</div>
+        </div>
+        <div class="ledger-hero-arrow">Open Ledger →</div>
+      </div>
+
       <!-- Featured / pinned tools -->
       <div id="featuredSection">
         <div class="section-header fade-up-2">
@@ -92,11 +103,17 @@
 
     function renderAll() {
       const filter = activeFilter;
-      let tools = filter === 'all' ? TOOLS : TOOLS.filter(t => t.category.id === filter);
+      // Hide ledger hero card when filtering to a category that isn't general
+      const heroCard = document.getElementById('ledgerHeroCard');
+      if (heroCard) {
+        heroCard.style.display = (filter === 'all' || filter === 'general') ? '' : 'none';
+      }
+      // Ledger has its own hero card above — exclude from grids
+      let tools = (filter === 'all' ? TOOLS : TOOLS.filter(t => t.category.id === filter)).filter(t => t.id !== 'ledger');
 
       // Featured section
       const featured = getFeaturedTools().filter(t =>
-        filter === 'all' || t.category.id === filter
+        t.id !== 'ledger' && (filter === 'all' || t.category.id === filter)
       );
       const featuredGrid = document.getElementById('featuredGrid');
       const featuredSection = document.getElementById('featuredSection');
