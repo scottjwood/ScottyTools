@@ -23,6 +23,7 @@ const TOOL_ICONS = {
   'ledger': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/><path d="M13 13h4m-4 4h4"/></svg>`,
   'folder-structure': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 13l2 2 4-4"/></svg>`,
   'tip-calculator': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+  'tig-reference': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19c0-4 2-7 2-7H10s2 3 2 7z"/><path d="M12 5v3"/><circle cx="12" cy="4" r="1"/><path d="M9 12c-2 1-4 3-4 5"/><path d="M15 12c2 1 4 3 4 5"/></svg>`,
   'tasks': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
 };
 
@@ -40,6 +41,16 @@ const TOOLS = [
     category: CATEGORIES.DIGITAL,
     path: 'tools/color-converter.html',
     tags: ['color', 'hex', 'rgb', 'hsl', 'cmyk', 'design'],
+    featured: false,
+  },
+
+  {
+    id: 'tig-reference',
+    label: 'TIG Reference',
+    description: 'Dial-in settings for the PrimeWeld 225. Amps, balance, frequency, tungsten, filler rod, and cup by material and thickness.',
+    category: CATEGORIES.FOUNDRY,
+    path: 'tools/tig-reference.html',
+    tags: ['tig', 'welding', 'aluminum', 'bronze', 'steel', 'stainless', 'amps', 'tungsten', 'filler'],
     featured: false,
   },
 
@@ -92,6 +103,16 @@ const TOOLS = [
     path: 'tools/pour-weight.html',
     tags: ['bronze', 'casting', 'weight', 'alloy'],
     featured: true,
+  },
+
+  {
+    id: 'tig-reference',
+    label: 'TIG Reference',
+    description: 'Dial-in settings for the PrimeWeld 225. Amps, balance, frequency, tungsten, filler rod, and cup by material and thickness.',
+    category: CATEGORIES.FOUNDRY,
+    path: 'tools/tig-reference.html',
+    tags: ['tig', 'welding', 'aluminum', 'bronze', 'steel', 'stainless', 'amps', 'tungsten', 'filler'],
+    featured: false,
   },
 
   // ── GENERAL ───────────────────────────────────────────────────────────────

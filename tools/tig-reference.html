@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TIG Reference — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    .tool-page { padding-top: var(--nav-h); min-height: 100vh; background: var(--bg); }
+    .tool-container { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    .tool-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); text-decoration: none; transition: color 150ms ease;
+      margin-bottom: 16px;
+    }
+    .tool-back:hover { color: var(--accent); }
+    .tool-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--text-1); line-height: 1; margin-bottom: 6px;
+    }
+    .tool-title span { color: var(--accent); }
+    .tool-sub { font-size: 0.82rem; color: var(--text-3); margin-bottom: 28px; }
+
+    /* ── Mode tabs ───────────────────────────────────────────────── */
+    .mode-tabs {
+      display: flex; gap: 4px; margin-bottom: 28px;
+      border-bottom: 1px solid var(--border); padding-bottom: 0;
+    }
+    .mode-tab {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.8rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); background: none; border: none;
+      padding: 8px 18px; cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 150ms ease;
+    }
+    .mode-tab:hover { color: var(--text-2); }
+    .mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── Dial-in mode ────────────────────────────────────────────── */
+    .selector-row {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;
+    }
+    .selector-group { display: flex; flex-direction: column; gap: 6px; }
+    .selector-label {
+      font-size: 0.62rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-3);
+    }
+    .selector-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill {
+      font-family: 'DM Mono', monospace; font-size: 0.75rem;
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-2);
+      padding: 6px 12px; cursor: pointer;
+      transition: all 150ms ease; user-select: none;
+    }
+    .pill:hover { border-color: var(--border-hi); color: var(--text-1); }
+    .pill.active {
+      background: rgba(232,160,32,0.1);
+      border-color: rgba(232,160,32,0.4);
+      color: var(--accent);
+    }
+
+    /* ── Results grid ────────────────────────────────────────────── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .result-card {
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .result-card-header {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #0e1010;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .result-card-icon { font-size: 0.9rem; opacity: 0.7; }
+    .result-card-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-2);
+    }
+    .result-card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    }
+    .stat-label { font-size: 0.72rem; color: var(--text-3); }
+    .stat-value {
+      font-family: 'DM Mono', monospace; font-size: 0.88rem;
+      color: var(--text-1); text-align: right;
+    }
+    .stat-value.accent { color: var(--accent); font-size: 1.05rem; }
+    .stat-value.highlight { color: #5b9cf6; }
+    .stat-divider { border: none; border-top: 1px solid rgba(255,255,255,0.05); margin: 2px 0; }
+
+    /* Amp bar */
+    .amp-bar-wrap { margin-top: 4px; }
+    .amp-bar-track {
+      height: 6px; background: rgba(255,255,255,0.06);
+      border-radius: 3px; position: relative; overflow: visible;
+    }
+    .amp-bar-range {
+      position: absolute; height: 100%; border-radius: 3px;
+      background: linear-gradient(90deg, rgba(232,160,32,0.3), rgba(232,160,32,0.7));
+    }
+    .amp-bar-start {
+      position: absolute; top: 50%; transform: translate(-50%,-50%);
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent); border: 2px solid #0e1010;
+    }
+    .amp-bar-labels {
+      display: flex; justify-content: space-between;
+      font-family: 'DM Mono', monospace; font-size: 0.6rem;
+      color: var(--text-3); margin-top: 4px;
+    }
+
+    /* Note box */
+    .note-box {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 6px; padding: 10px 12px;
+      font-size: 0.75rem; color: var(--text-3); line-height: 1.5;
+    }
+    .note-box.warn {
+      background: rgba(251,146,60,0.06); border-color: rgba(251,146,60,0.2);
+      color: #fb923c;
+    }
+    .note-box.tip {
+      background: rgba(74,222,128,0.05); border-color: rgba(74,222,128,0.15);
+      color: #4ade80;
+    }
+
+    /* Rod chips */
+    .rod-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .rod-chip {
+      font-family: 'DM Mono', monospace; font-size: 0.72rem;
+      background: rgba(91,156,246,0.1); border: 1px solid rgba(91,156,246,0.25);
+      border-radius: 4px; padding: 3px 9px; color: #5b9cf6;
+    }
+    .rod-chip.secondary {
+      background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--text-3);
+    }
+
+    /* ── Save my settings strip ──────────────────────────────────── */
+    .save-strip {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px;
+      background: #0e1010; border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .save-strip-label { font-size: 0.72rem; color: var(--text-3); flex: 1; }
+    .save-note-input {
+      flex: 2; min-width: 180px;
+      background: #1a1c1e; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1);
+      font-family: 'DM Mono', monospace; font-size: 0.78rem;
+      padding: 6px 10px; outline: none;
+      transition: border-color 150ms ease;
+    }
+    .save-note-input:focus { border-color: var(--accent); }
+    .save-note-input::placeholder { color: var(--text-3); }
+    .save-btn {
+      background: rgba(232,160,32,0.1); border: 1px solid rgba(232,160,32,0.3);
+      border-radius: 6px; color: var(--accent);
+      font-family: 'DM Mono', monospace; font-size: 0.75rem;
+      padding: 6px 14px; cursor: pointer; transition: all 150ms ease; white-space: nowrap;
+    }
+    .save-btn:hover { background: rgba(232,160,32,0.18); }
+
+    /* ── Saved settings list ─────────────────────────────────────── */
+    .saved-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+    .saved-item {
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .saved-item-body { flex: 1; min-width: 0; }
+    .saved-item-title {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 1rem;
+      font-weight: 600; color: var(--text-1); margin-bottom: 3px;
+    }
+    .saved-item-meta {
+      font-family: 'DM Mono', monospace; font-size: 0.68rem;
+      color: var(--text-3); line-height: 1.6;
+    }
+    .saved-item-note {
+      font-size: 0.75rem; color: var(--text-2); margin-top: 4px;
+      font-style: italic;
+    }
+    .saved-item-del {
+      background: none; border: none; color: var(--text-3);
+      font-size: 0.8rem; cursor: pointer; padding: 2px 6px;
+      border-radius: 4px; transition: all 150ms ease; flex-shrink: 0;
+    }
+    .saved-item-del:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+    .saved-item-load {
+      background: none; border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-3);
+      font-family: 'DM Mono', monospace; font-size: 0.68rem;
+      padding: 3px 8px; cursor: pointer; transition: all 150ms ease; flex-shrink: 0;
+    }
+    .saved-item-load:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Compare mode ────────────────────────────────────────────── */
+    .compare-grid {
+      display: grid; gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .compare-header-row {
+      display: grid; gap: 1px; background: var(--border);
+    }
+    .compare-cell {
+      background: #0e1010; padding: 10px 14px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2);
+    }
+    .compare-cell.mat { color: var(--accent); font-size: 0.85rem; }
+    .compare-row {
+      display: grid; gap: 1px; background: var(--border);
+    }
+    .compare-row:nth-child(even) .compare-cell { background: #131516; }
+    .compare-row:nth-child(odd)  .compare-cell { background: #111313; }
+    .compare-cell.key {
+      font-family: 'DM Mono', monospace; font-size: 0.68rem;
+      color: var(--text-3); background: #0c0e0e !important;
+    }
+    .compare-cell.val {
+      font-family: 'DM Mono', monospace; font-size: 0.75rem;
+      color: var(--text-1);
+    }
+
+    /* ── Copy summary ────────────────────────────────────────────── */
+    .summary-box {
+      background: #0c0e0e; border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px;
+      font-family: 'DM Mono', monospace; font-size: 0.75rem;
+      color: var(--text-2); line-height: 1.8; white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .copy-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .copy-row-label { font-size: 0.72rem; color: var(--text-3); }
+    .copy-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-3);
+      font-family: 'DM Mono', monospace; font-size: 0.7rem;
+      padding: 4px 10px; cursor: pointer; transition: all 150ms ease;
+    }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.ok { border-color: #4ade80; color: #4ade80; }
+
+    /* ── Empty state ─────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 48px 20px;
+      color: var(--text-3); font-size: 0.82rem;
+    }
+    .empty-icon { font-size: 2rem; margin-bottom: 10px; opacity: 0.4; }
+
+    /* ── Mode views ──────────────────────────────────────────────── */
+    .mode-view { display: none; }
+    .mode-view.active { display: block; }
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+
+<div class="tool-page">
+  <div class="tool-container">
+    <a href="../index.html" class="tool-back">← ScottyTools</a>
+    <div class="tool-title">TIG <span>Reference</span></div>
+    <div class="tool-sub">PrimeWeld 225 · Dial-in settings for aluminum, bronze, steel, and stainless.</div>
+
+    <!-- Mode tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="switchMode('dialin')">Dial-In</button>
+      <button class="mode-tab" onclick="switchMode('compare')">Compare</button>
+      <button class="mode-tab" onclick="switchMode('saved')">Saved</button>
+    </div>
+
+    <!-- ── DIAL-IN MODE ─────────────────────────────────────────── -->
+    <div class="mode-view active" id="view-dialin">
+
+      <div class="selector-row">
+        <div class="selector-group">
+          <div class="selector-label">Material</div>
+          <div class="selector-pills" id="matPills">
+            <button class="pill active" data-mat="aluminum">Aluminum</button>
+            <button class="pill" data-mat="bronze">Silicon Bronze</button>
+            <button class="pill" data-mat="steel">Mild Steel</button>
+            <button class="pill" data-mat="stainless">Stainless</button>
+          </div>
+        </div>
+        <div class="selector-group">
+          <div class="selector-label">Thickness</div>
+          <div class="selector-pills" id="thickPills">
+            <button class="pill active" data-thick="1/16">1/16&Prime;</button>
+            <button class="pill" data-thick="3/32">3/32&Prime;</button>
+            <button class="pill" data-thick="1/8">1/8&Prime;</button>
+            <button class="pill" data-thick="3/16">3/16&Prime;</button>
+            <button class="pill" data-thick="1/4">1/4&Prime;</button>
+            <button class="pill" data-thick="3/8">3/8&Prime;</button>
+            <button class="pill" data-thick="1/2">1/2&Prime;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="results-grid" id="resultsGrid"></div>
+
+      <!-- Save strip -->
+      <div class="save-strip">
+        <span class="save-strip-label">Save these settings</span>
+        <input class="save-note-input" id="saveNote" type="text"
+          placeholder="Optional note (e.g. 'exhaust flange')"
+          onkeydown="if(event.key==='Enter') saveSettings()"/>
+        <button class="save-btn" onclick="saveSettings()">Save</button>
+      </div>
+
+      <!-- Copy summary -->
+      <div class="copy-row">
+        <span class="copy-row-label">Settings summary</span>
+        <button class="copy-btn" id="copyBtn" onclick="copySummary()">Copy to clipboard</button>
+      </div>
+      <div class="summary-box" id="summaryBox"></div>
+
+    </div>
+
+    <!-- ── COMPARE MODE ─────────────────────────────────────────── -->
+    <div class="mode-view" id="view-compare">
+      <div id="compareTable"></div>
+    </div>
+
+    <!-- ── SAVED MODE ───────────────────────────────────────────── -->
+    <div class="mode-view" id="view-saved">
+      <div class="saved-list" id="savedList"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/tools-registry.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.init();
+
+// ══════════════════════════════════════════════════════════════════
+// DATA — PrimeWeld 225 specific
+// ══════════════════════════════════════════════════════════════════
+
+// Thickness in decimal inches → label
+const THICKNESSES = {
+  '1/16': 0.0625, '3/32': 0.09375, '1/8': 0.125,
+  '3/16': 0.1875, '1/4': 0.25,    '3/8': 0.375, '1/2': 0.5,
+};
+
+// Rule of thumb: ~1A per 0.001" for steel/stainless, ~1.5A for aluminum
+// Bronze runs cooler — similar to steel
+function calcAmps(mat, thickIn) {
+  const t = THICKNESSES[thickIn];
+  const base = {
+    aluminum:  Math.round(t * 1000 * 1.4),
+    bronze:    Math.round(t * 1000 * 0.9),
+    steel:     Math.round(t * 1000 * 1.0),
+    stainless: Math.round(t * 1000 * 0.95),
+  }[mat];
+  const low  = Math.round(base * 0.8);
+  const high = Math.min(Math.round(base * 1.2), 200); // PW225 max 200A
+  const start = Math.min(base, 200);
+  return { low, high, start };
+}
+
+const MAT_DATA = {
+  aluminum: {
+    label: 'Aluminum',
+    polarity: 'AC',
+    current: 'AC — High Frequency',
+    gas: '100% Argon',
+    cfh: '15–20 CFH',
+    tungsten: { type: 'Pure (green) or Zirconiated (white)', dia: { '1/16':'1/16"', '3/32':'3/32"', '1/8':'3/32"–1/8"', '3/16':'1/8"', '1/4':'1/8"–5/32"', '3/8':'5/32"', '1/2':'3/16"' }, prep: 'Balled tip — let arc form the ball on AC' },
+    balance: { val: '65–75% EN (cleaning)', note: 'Higher EN = more penetration, less cleaning. Start at 70%. Increase cleaning for heavily oxidized material.' },
+    freq: { val: '80–120 Hz', note: 'Higher freq = more focused arc, better for thin material. Lower freq = wider arc, more heat input. Start at 100 Hz.' },
+    rods: [
+      { id: 'ER4043', label: 'ER4043', note: 'General purpose. Fluidity, crack resistance. Good for castings.', primary: true },
+      { id: 'ER5356', label: 'ER5356', note: 'Higher strength. Marine/structural. Better color match after anodizing.', primary: false },
+    ],
+    rodDia: { '1/16':'1/16"', '3/32':'1/16"', '1/8':'3/32"', '3/16':'3/32"', '1/4':'1/8"', '3/8':'1/8"–3/16"', '1/2':'3/16"' },
+    torch: { body: 'WP-17 or WP-26', cup: { '1/16':'#5–6', '3/32':'#6', '1/8':'#6–7', '3/16':'#7', '1/4':'#7–8', '3/8':'#8', '1/2':'#8' }, stickout: '1/4"–3/8"' },
+    prep: 'Wipe with acetone. Brush with dedicated stainless brush (aluminum only). Remove oxide layer — it melts at 3700°F vs 1200°F for base metal.',
+    pitfalls: ['Porosity from contamination — clean is everything', 'Burn-through on thin material — use pulse or back-step technique', 'Not preheating thick sections (>3/8") — preheat to 250°F'],
+  },
+  bronze: {
+    label: 'Silicon Bronze',
+    polarity: 'DC',
+    current: 'DCEN (electrode negative)',
+    gas: '100% Argon',
+    cfh: '12–18 CFH',
+    tungsten: { type: '2% Thoriated (red) or Ceriated (gray)', dia: { '1/16':'1/16"', '3/32':'1/16"', '1/8':'3/32"', '3/16':'3/32"–1/8"', '1/4':'1/8"', '3/8':'1/8"', '1/2':'3/16"' }, prep: 'Ground to a sharp point — 15–20° taper' },
+    balance: null,
+    freq: null,
+    rods: [
+      { id: 'ERCuSi-A', label: 'ERCuSi-A', note: 'Silicon bronze filler. Standard choice for bronze base metal and sheet metal brazing.', primary: true },
+      { id: 'ERCuSn-A', label: 'ERCuSn-A', note: 'Phosphor bronze. Higher strength, lower fluidity. Good for repairs.', primary: false },
+    ],
+    rodDia: { '1/16':'1/16"', '3/32':'1/16"', '1/8':'1/16"–3/32"', '3/16':'3/32"', '1/4':'3/32"–1/8"', '3/8':'1/8"', '1/2':'1/8"–3/16"' },
+    torch: { body: 'WP-17 or WP-26', cup: { '1/16':'#5', '3/32':'#5–6', '1/8':'#6', '3/16':'#6', '1/4':'#6–7', '3/8':'#7', '1/2':'#7–8' }, stickout: '3/16"–1/4"' },
+    prep: 'Clean with acetone. Light wire brush. Bronze work-hardens — avoid clamping stress on thin sections.',
+    pitfalls: ['Running too hot — bronze has low melting point, easy to melt through', 'Zinc fumes if welding brass — ventilate or use respirator', 'Cracking on thick sections — preheat to 400°F, slow cool'],
+  },
+  steel: {
+    label: 'Mild Steel',
+    polarity: 'DC',
+    current: 'DCEN (electrode negative)',
+    gas: '100% Argon (or 75/25 Ar/CO₂ for MIG — but pure Ar for TIG)',
+    cfh: '12–18 CFH',
+    tungsten: { type: '2% Thoriated (red) or Ceriated (gray)', dia: { '1/16':'1/16"', '3/32':'1/16"', '1/8':'3/32"', '3/16':'3/32"–1/8"', '1/4':'1/8"', '3/8':'1/8"–3/32"', '1/2':'3/16"' }, prep: 'Ground to a sharp point — 15–20° taper' },
+    balance: null,
+    freq: null,
+    rods: [
+      { id: 'ER70S-2', label: 'ER70S-2', note: 'Best all-around for TIG. Triple deoxidized — handles surface impurities well.', primary: true },
+      { id: 'ER70S-6', label: 'ER70S-6', note: 'Higher silicon, better for rusty/dirty base metal. Slightly more spatter.', primary: false },
+    ],
+    rodDia: { '1/16':'1/16"', '3/32':'1/16"', '1/8':'1/16"–3/32"', '3/16':'3/32"', '1/4':'3/32"–1/8"', '3/8':'1/8"', '1/2':'1/8"–3/16"' },
+    torch: { body: 'WP-17 or WP-26', cup: { '1/16':'#5', '3/32':'#5–6', '1/8':'#6', '3/16':'#6', '1/4':'#6–7', '3/8':'#7', '1/2':'#7–8' }, stickout: '3/16"–1/4"' },
+    prep: 'Grind or wire brush to bare metal. Wipe with acetone. No mill scale — grind it off. Steel is forgiving but scale causes porosity.',
+    pitfalls: ['Mill scale causing porosity — always grind clean', 'Not back purging on tube/pipe — oxidation on root pass', 'Too much heat input causing warping on thin sheet'],
+  },
+  stainless: {
+    label: 'Stainless Steel',
+    polarity: 'DC',
+    current: 'DCEN (electrode negative)',
+    gas: '100% Argon (back purge with Argon for pipe/tube)',
+    cfh: '15–20 CFH',
+    tungsten: { type: '2% Thoriated (red) or Ceriated (gray)', dia: { '1/16':'1/16"', '3/32':'1/16"', '1/8':'3/32"', '3/16':'3/32"–1/8"', '1/4':'1/8"', '3/8':'1/8"', '1/2':'3/16"' }, prep: 'Ground to a sharp point — 15–20° taper. Dedicated tungsten only.' },
+    balance: null,
+    freq: null,
+    rods: [
+      { id: 'ER308L', label: 'ER308L', note: 'Standard 304SS to 304SS. Most common choice.', primary: true },
+      { id: 'ER316L', label: 'ER316L', note: 'For 316SS or marine/chemical environments. Better corrosion resistance.', primary: false },
+      { id: 'ER309L', label: 'ER309L', note: 'Stainless to mild steel dissimilar joins.', primary: false },
+    ],
+    rodDia: { '1/16':'1/16"', '3/32':'1/16"', '1/8':'1/16"–3/32"', '3/16':'3/32"', '1/4':'3/32"–1/8"', '3/8':'1/8"', '1/2':'1/8"–3/16"' },
+    torch: { body: 'WP-17 or WP-26 (gas lens recommended)', cup: { '1/16':'#5–6 gas lens', '3/32':'#6 gas lens', '1/8':'#6–7 gas lens', '3/16':'#7 gas lens', '1/4':'#7–8 gas lens', '3/8':'#8 gas lens', '1/2':'#8 gas lens' }, stickout: '1/4"–3/8" with gas lens' },
+    prep: 'Acetone wipe. Dedicated stainless brush — never share with carbon steel. Avoid touching weld zone with bare hands (oils cause contamination).',
+    pitfalls: ['Sugaring (oxidation on back side) — always back purge pipe/tube', 'Heat tint discoloration — minimize heat input, move quickly', 'Cross-contamination from carbon steel tools — keep tools dedicated'],
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════
+let selMat   = 'aluminum';
+let selThick = '1/16';
+let curMode  = 'dialin';
+
+// ══════════════════════════════════════════════════════════════════
+// MODE SWITCHING
+// ══════════════════════════════════════════════════════════════════
+function switchMode(mode) {
+  curMode = mode;
+  document.querySelectorAll('.mode-tab').forEach((t, i) =>
+    t.classList.toggle('active', ['dialin','compare','saved'][i] === mode)
+  );
+  document.querySelectorAll('.mode-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + mode).classList.add('active');
+  if (mode === 'compare') renderCompare();
+  if (mode === 'saved')   renderSaved();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PILL SELECTORS
+// ══════════════════════════════════════════════════════════════════
+document.getElementById('matPills').addEventListener('click', e => {
+  const p = e.target.closest('.pill');
+  if (!p) return;
+  selMat = p.dataset.mat;
+  document.querySelectorAll('#matPills .pill').forEach(x => x.classList.remove('active'));
+  p.classList.add('active');
+  renderDialIn();
+});
+
+document.getElementById('thickPills').addEventListener('click', e => {
+  const p = e.target.closest('.pill');
+  if (!p) return;
+  selThick = p.dataset.thick;
+  document.querySelectorAll('#thickPills .pill').forEach(x => x.classList.remove('active'));
+  p.classList.add('active');
+  renderDialIn();
+});
+
+// ══════════════════════════════════════════════════════════════════
+// DIAL-IN RENDER
+// ══════════════════════════════════════════════════════════════════
+function renderDialIn() {
+  const d    = MAT_DATA[selMat];
+  const amps = calcAmps(selMat, selThick);
+  const pct  = v => Math.round((v / 200) * 100);
+
+  const grid = document.getElementById('resultsGrid');
+
+  // ── Machine settings card
+  let balFreq = '';
+  if (d.balance) {
+    balFreq = `
+      <hr class="stat-divider"/>
+      <div class="stat-row">
+        <span class="stat-label">Balance (EN%)</span>
+        <span class="stat-value highlight">${d.balance.val}</span>
+      </div>
+      <div class="note-box" style="margin-top:4px">${d.balance.note}</div>
+      <div class="stat-row" style="margin-top:8px">
+        <span class="stat-label">Frequency</span>
+        <span class="stat-value highlight">${d.freq.val}</span>
+      </div>
+      <div class="note-box" style="margin-top:4px">${d.freq.note}</div>`;
+  }
+
+  // ── Torch card
+  const cup = d.torch.cup[selThick];
+
+  // ── Pitfalls
+  const pitfallHtml = d.pitfalls.map(p =>
+    `<div class="note-box warn" style="margin-bottom:6px">⚠ ${p}</div>`
+  ).join('');
+
+  grid.innerHTML = `
+    <!-- Machine settings -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <span class="result-card-icon">⚡</span>
+        <span class="result-card-title">Machine Settings</span>
+      </div>
+      <div class="result-card-body">
+        <div class="stat-row">
+          <span class="stat-label">Current</span>
+          <span class="stat-value">${d.current}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Starting Amps</span>
+          <span class="stat-value accent">${amps.start} A</span>
+        </div>
+        <div class="amp-bar-wrap">
+          <div class="amp-bar-track">
+            <div class="amp-bar-range" style="left:${pct(amps.low)}%;width:${pct(amps.high)-pct(amps.low)}%"></div>
+            <div class="amp-bar-start" style="left:${pct(amps.start)}%"></div>
+          </div>
+          <div class="amp-bar-labels"><span>${amps.low}A</span><span>Start: ${amps.start}A</span><span>${amps.high}A</span></div>
+        </div>
+        <hr class="stat-divider"/>
+        <div class="stat-row">
+          <span class="stat-label">Shielding Gas</span>
+          <span class="stat-value">${d.gas}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Flow Rate</span>
+          <span class="stat-value">${d.cfh}</span>
+        </div>
+        ${balFreq}
+      </div>
+    </div>
+
+    <!-- Tungsten & torch -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <span class="result-card-icon">🔦</span>
+        <span class="result-card-title">Tungsten & Torch</span>
+      </div>
+      <div class="result-card-body">
+        <div class="stat-row">
+          <span class="stat-label">Tungsten Type</span>
+          <span class="stat-value">${d.tungsten.type}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Tungsten Diameter</span>
+          <span class="stat-value accent">${d.tungsten.dia[selThick]}</span>
+        </div>
+        <div class="note-box">${d.tungsten.prep}</div>
+        <hr class="stat-divider"/>
+        <div class="stat-row">
+          <span class="stat-label">Torch Body</span>
+          <span class="stat-value">${d.torch.body}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Cup Size</span>
+          <span class="stat-value accent">${cup}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Stick-out</span>
+          <span class="stat-value">${d.torch.stickout}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filler rod -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <span class="result-card-icon">〰</span>
+        <span class="result-card-title">Filler Rod</span>
+      </div>
+      <div class="result-card-body">
+        <div class="stat-row">
+          <span class="stat-label">Rod Diameter</span>
+          <span class="stat-value accent">${d.rodDia[selThick]}</span>
+        </div>
+        <div class="stat-label" style="margin-top:4px">Recommended rods</div>
+        <div class="rod-chips" style="margin-top:6px">
+          ${d.rods.map(r => `<span class="rod-chip ${r.primary ? '' : 'secondary'}">${r.label}</span>`).join('')}
+        </div>
+        ${d.rods.map(r => `
+          <div class="note-box" style="margin-top:6px">
+            <strong style="color:var(--text-2)">${r.label}</strong> — ${r.note}
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Prep & pitfalls -->
+    <div class="result-card">
+      <div class="result-card-header">
+        <span class="result-card-icon">🛠</span>
+        <span class="result-card-title">Prep & Pitfalls</span>
+      </div>
+      <div class="result-card-body">
+        <div class="note-box tip">${d.prep}</div>
+        <div style="margin-top:8px">${pitfallHtml}</div>
+      </div>
+    </div>
+  `;
+
+  renderSummary(d, amps);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SUMMARY / COPY
+// ══════════════════════════════════════════════════════════════════
+function buildSummaryText(d, amps) {
+  const lines = [
+    `TIG SETTINGS — ${d.label.toUpperCase()} @ ${selThick}"`,
+    `Machine: PrimeWeld 225`,
+    `─────────────────────────────`,
+    `Current:      ${d.current}`,
+    `Amps:         ${amps.start}A (range ${amps.low}–${amps.high}A)`,
+    `Gas:          ${d.gas} @ ${d.cfh}`,
+  ];
+  if (d.balance) {
+    lines.push(`Balance:      ${d.balance.val}`);
+    lines.push(`Frequency:    ${d.freq.val}`);
+  }
+  lines.push(`─────────────────────────────`);
+  lines.push(`Tungsten:     ${d.tungsten.type}`);
+  lines.push(`Tungsten dia: ${d.tungsten.dia[selThick]}`);
+  lines.push(`Tip prep:     ${d.tungsten.prep}`);
+  lines.push(`Torch:        ${d.torch.body}`);
+  lines.push(`Cup:          ${d.torch.cup[selThick]}`);
+  lines.push(`Stick-out:    ${d.torch.stickout}`);
+  lines.push(`─────────────────────────────`);
+  lines.push(`Rod dia:      ${d.rodDia[selThick]}`);
+  lines.push(`Filler:       ${d.rods.map(r => r.id).join(' / ')}`);
+  lines.push(`─────────────────────────────`);
+  lines.push(`Prep:         ${d.prep}`);
+  return lines.join('\n');
+}
+
+function renderSummary(d, amps) {
+  document.getElementById('summaryBox').textContent = buildSummaryText(d, amps);
+}
+
+function copySummary() {
+  const text = document.getElementById('summaryBox').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy to clipboard'; btn.classList.remove('ok'); }, 2000);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SAVE SETTINGS
+// ══════════════════════════════════════════════════════════════════
+function getSaved() {
+  try { return JSON.parse(localStorage.getItem('tig_saved') || '[]'); } catch { return []; }
+}
+
+function saveSettings() {
+  const note  = document.getElementById('saveNote').value.trim();
+  const d     = MAT_DATA[selMat];
+  const amps  = calcAmps(selMat, selThick);
+  const entry = {
+    id: Date.now(),
+    mat: selMat, thick: selThick, note,
+    summary: buildSummaryText(d, amps),
+    ts: new Date().toLocaleDateString(),
+  };
+  const saved = getSaved();
+  saved.unshift(entry);
+  localStorage.setItem('tig_saved', JSON.stringify(saved.slice(0, 20)));
+  document.getElementById('saveNote').value = '';
+
+  const btn = document.querySelector('.save-btn');
+  btn.textContent = '✓ Saved';
+  setTimeout(() => { btn.textContent = 'Save'; }, 1800);
+}
+
+function renderSaved() {
+  const list = document.getElementById('savedList');
+  const saved = getSaved();
+  if (!saved.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">◎</div>No saved settings yet. Dial in a setup and hit Save.</div>';
+    return;
+  }
+  list.innerHTML = saved.map(s => {
+    const d = MAT_DATA[s.mat];
+    const amps = calcAmps(s.mat, s.thick);
+    return `
+      <div class="saved-item">
+        <div class="saved-item-body">
+          <div class="saved-item-title">${d.label} @ ${s.thick}&Prime;</div>
+          <div class="saved-item-meta">${d.current} · ${amps.start}A · ${d.rodDia[s.thick]} rod · ${d.rods[0].id} · Saved ${s.ts}</div>
+          ${s.note ? `<div class="saved-item-note">"${s.note}"</div>` : ''}
+        </div>
+        <button class="saved-item-load" onclick="loadSaved('${s.mat}','${s.thick}')">Load</button>
+        <button class="saved-item-del" onclick="deleteSaved(${s.id})">✕</button>
+      </div>`;
+  }).join('');
+}
+
+function loadSaved(mat, thick) {
+  selMat   = mat;
+  selThick = thick;
+  switchMode('dialin');
+  document.querySelectorAll('#matPills .pill').forEach(p =>
+    p.classList.toggle('active', p.dataset.mat === mat));
+  document.querySelectorAll('#thickPills .pill').forEach(p =>
+    p.classList.toggle('active', p.dataset.thick === thick));
+  renderDialIn();
+}
+
+function deleteSaved(id) {
+  const saved = getSaved().filter(s => s.id !== id);
+  localStorage.setItem('tig_saved', JSON.stringify(saved));
+  renderSaved();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// COMPARE MODE
+// ══════════════════════════════════════════════════════════════════
+function renderCompare() {
+  const thick = selThick;
+  const mats  = ['aluminum', 'bronze', 'steel', 'stainless'];
+  const cols  = 5; // label + 4 materials
+  const colStyle = `grid-template-columns: 140px repeat(4, 1fr)`;
+
+  const rows = [
+    { key: 'Current',       fn: m => MAT_DATA[m].current },
+    { key: `Amps (${thick}")`, fn: m => { const a = calcAmps(m, thick); return `${a.start}A (${a.low}–${a.high})`; } },
+    { key: 'Gas',           fn: m => MAT_DATA[m].gas },
+    { key: 'Flow Rate',     fn: m => MAT_DATA[m].cfh },
+    { key: 'Tungsten',      fn: m => MAT_DATA[m].tungsten.type.split(' or ')[0] },
+    { key: `Tungsten Dia`,  fn: m => MAT_DATA[m].tungsten.dia[thick] },
+    { key: 'Tip Prep',      fn: m => MAT_DATA[m].tungsten.prep.split(' — ')[0] },
+    { key: 'Cup Size',      fn: m => MAT_DATA[m].torch.cup[thick] },
+    { key: 'Stick-out',     fn: m => MAT_DATA[m].torch.stickout },
+    { key: `Rod Dia`,       fn: m => MAT_DATA[m].rodDia[thick] },
+    { key: 'Primary Rod',   fn: m => MAT_DATA[m].rods[0].id },
+    { key: 'AC Balance',    fn: m => MAT_DATA[m].balance?.val || '—' },
+    { key: 'AC Frequency',  fn: m => MAT_DATA[m].freq?.val    || '—' },
+  ];
+
+  document.getElementById('compareTable').innerHTML = `
+    <div style="margin-bottom:12px">
+      <span style="font-size:0.72rem;color:var(--text-3)">Showing settings for thickness: </span>
+      <span style="font-family:var(--mono);font-size:0.78rem;color:var(--accent)">${thick}&Prime;</span>
+      <span style="font-size:0.72rem;color:var(--text-3)"> — change thickness in the Dial-In tab</span>
+    </div>
+    <div class="compare-grid">
+      <div class="compare-header-row" style="${colStyle}">
+        <div class="compare-cell"></div>
+        ${mats.map(m => `<div class="compare-cell mat">${MAT_DATA[m].label}</div>`).join('')}
+      </div>
+      ${rows.map((r, i) => `
+        <div class="compare-row" style="${colStyle}">
+          <div class="compare-cell key">${r.key}</div>
+          ${mats.map(m => `<div class="compare-cell val">${r.fn(m)}</div>`).join('')}
+        </div>`).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+renderDialIn();
+</script>
+</body>
+</html>
