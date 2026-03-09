@@ -44,41 +44,42 @@
 
     /* ── Bill input ──────────────────────────────────────────── */
     .bill-wrap {
-      position: relative;
-    }
-    .bill-prefix {
-      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-      font-family: 'DM Mono', monospace; font-size: 1.6rem;
-      color: var(--text-3); pointer-events: none;
-    }
-    .bill-input {
+      display: flex; align-items: stretch;
       background: #1a1c1e;
       border: 1px solid var(--border);
       border-radius: 6px;
+      transition: border-color 150ms ease;
+    }
+    .bill-wrap:focus-within { border-color: var(--accent); }
+    .bill-prefix {
+      display: flex; align-items: center;
+      padding: 0 4px 0 14px;
+      font-family: 'DM Mono', monospace; font-size: 1.6rem;
+      color: var(--text-3); user-select: none; flex-shrink: 0;
+    }
+    .bill-input {
+      flex: 1; min-width: 0;
+      background: transparent; border: none;
       color: var(--text-1);
       font-family: 'DM Mono', monospace;
       font-size: 1.6rem;
-      padding: 12px 40px 12px 42px;
-      outline: none; width: 100%;
-      transition: border-color 150ms ease;
-      -webkit-appearance: none;
+      padding: 12px 4px;
+      outline: none;
     }
     .bill-input::-webkit-inner-spin-button,
     .bill-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     .bill-input[type=number] { -moz-appearance: textfield; }
+    .bill-input::placeholder { color: var(--text-3); }
     .bill-clear {
-      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      display: none; align-items: center;
       background: none; border: none;
-      color: var(--text-3); font-size: 1rem;
-      cursor: pointer; padding: 4px 6px;
-      border-radius: 4px;
-      transition: color 150ms ease;
-      display: none;
+      color: var(--text-3); font-size: 0.9rem;
+      cursor: pointer; padding: 0 14px;
+      border-radius: 0 6px 6px 0;
+      transition: color 150ms ease; flex-shrink: 0;
     }
     .bill-clear:hover { color: var(--text-1); }
-    .bill-clear.visible { display: block; }
-    .bill-input:focus { border-color: var(--accent); }
-    .bill-input::placeholder { color: var(--text-3); }
+    .bill-clear.visible { display: flex; }
 
     /* ── Tip preset buttons ──────────────────────────────────── */
     .tip-presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
