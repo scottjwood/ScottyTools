@@ -184,22 +184,21 @@ const Auth = (() => {
       scope: SCOPES,
       callback: async (response) => {
         if (response.error) {
-          // Silent refresh failed (e.g. cookies blocked) — only clear if
-          // this was an explicit sign-in attempt, not a background refresh
-          if (response.error !== 'interaction_required' &&
-              response.error !== 'access_denied') {
-            console.warn('Auth silent refresh issue:', response.error);
+          if (response.error === 'interaction_required' ||
+              response.error === 'access_denied') {
+            // Silent refresh requires user gesture — don't clear session,
+            // just wait until user manually interacts
+            console.warn('Auth: silent refresh needs interaction:', response.error);
           } else {
-            clearSession();
+            console.warn('Auth: token error:', response.error);
           }
-          fireReady();
+          if (_readyCallbacks !== null) fireReady();
           return;
         }
 
         // For silent refreshes we already have _user — skip fetching profile
         if (_user && isAllowed(_user.email)) {
           saveSession(response.access_token, response.expires_in, _user);
-          // Only fire ready on first load, not on background refreshes
           if (_readyCallbacks !== null) fireReady();
           if (onSignIn) onSignIn(_user);
           return;
@@ -224,20 +223,21 @@ const Auth = (() => {
       },
     });
 
-    const hasSession = loadSession();
+    // Use the session state already loaded by init() — don't call loadSession() again
+    const expiry = parseInt(localStorage.getItem(KEY_EXPIRY) || '0');
 
-    if (hasSession && _token) {
+    if (_token && _user && Date.now() < expiry) {
       // Token still valid — schedule refresh and fire ready
-      const expiry = parseInt(localStorage.getItem(KEY_EXPIRY) || '0');
       scheduleRefresh(expiry);
       fireReady();
-    } else if (hasSession && _user && sessionValid()) {
+    } else if (_user && sessionValid()) {
       // User known, token expired, but within 30-day window — silent refresh
-      // Fire ready now with user (token will arrive shortly via callback)
+      // Fire ready immediately with the user object so the page doesn't hang
       fireReady();
-      silentRefresh();
+      // Small delay to let GIS fully initialize before requesting token
+      setTimeout(silentRefresh, 100);
     } else {
-      // No session or session older than 30 days
+      // No session or session older than 30 days — require sign-in
       clearSession();
       fireReady();
     }
