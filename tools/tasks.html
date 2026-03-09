@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../css/main.css"/>
   <style>
     .tool-page { padding-top: var(--nav-h); min-height: 100vh; background: var(--bg); }
-    .tool-container { max-width: 780px; margin: 0 auto; padding: 40px 24px 80px; }
+    .tool-container { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
 
     .tool-back {
       display: inline-flex; align-items: center; gap: 6px;
@@ -84,41 +84,54 @@
     .add-btn:hover { background: rgba(232,160,32,0.18); border-color: rgba(232,160,32,0.5); }
     .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* ── Task groups ─────────────────────────────────────────── */
-    .task-group { margin-bottom: 24px; }
+    /* ── Task columns layout ─────────────────────────────────── */
+    .task-columns {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+    .task-group {
+      background: #131516;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
     .task-group-header {
-      display: flex; align-items: center; gap: 10px;
-      padding: 0 0 10px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px;
       border-bottom: 1px solid var(--border);
-      margin-bottom: 2px;
+      background: #0e1010;
     }
     .task-group-name {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.85rem; font-weight: 600;
+      font-size: 0.8rem; font-weight: 600;
       letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--text-2);
+      color: var(--text-2); flex: 1;
     }
     .task-group-count {
       font-family: 'DM Mono', monospace;
-      font-size: 0.65rem; color: var(--text-3);
+      font-size: 0.62rem; color: var(--text-3);
     }
     .task-group-refresh {
-      margin-left: auto; background: none; border: none;
-      color: var(--text-3); font-size: 0.75rem; cursor: pointer;
-      padding: 2px 6px; border-radius: 4px;
-      transition: color 150ms ease;
+      background: none; border: none;
+      color: var(--text-3); font-size: 0.8rem; cursor: pointer;
+      padding: 2px 5px; border-radius: 4px;
+      transition: color 150ms ease; line-height: 1;
     }
     .task-group-refresh:hover { color: var(--accent); }
+    .task-group-body { padding: 4px 0; }
 
     /* ── Task item ───────────────────────────────────────────── */
     .task-item {
-      display: flex; align-items: flex-start; gap: 12px;
-      padding: 12px 4px;
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 14px;
       border-bottom: 1px solid rgba(255,255,255,0.04);
-      transition: background 150ms ease;
+      transition: background 100ms ease;
     }
+    .task-item:hover { background: rgba(255,255,255,0.02); }
     .task-item:last-child { border-bottom: none; }
-    .task-item.completed { opacity: 0.45; }
+    .task-item.completed { opacity: 0.4; }
 
     .task-check {
       width: 18px; height: 18px; flex-shrink: 0;
@@ -368,7 +381,7 @@ function renderTasks() {
     return;
   }
 
-  let html = '';
+  let cols = '';
   let anyTasks = false;
 
   active.forEach(list => {
@@ -378,39 +391,43 @@ function renderTasks() {
     const showComp  = showCompleted[list.id];
     anyTasks = anyTasks || tasks.length > 0;
 
-    html += `
+    let itemsHtml = '';
+    if (!pending.length && !completed.length) {
+      itemsHtml = `<div style="padding:14px;font-size:0.78rem;color:var(--text-3)">No tasks — add one above.</div>`;
+    }
+    pending.forEach(t => { itemsHtml += renderTaskItem(t, list.id); anyTasks = true; });
+
+    let compHtml = '';
+    if (completed.length) {
+      compHtml = `
+        <button class="completed-toggle" onclick="toggleCompleted('${list.id}')">
+          ${showComp ? '▾' : '▸'} ${completed.length} completed
+        </button>`;
+      if (showComp) {
+        completed.forEach(t => { compHtml += renderTaskItem(t, list.id); });
+      }
+    }
+
+    cols += `
       <div class="task-group">
         <div class="task-group-header">
           <span class="task-group-name">${escHtml(list.title)}</span>
           <span class="task-group-count">${pending.length} pending</span>
           <button class="task-group-refresh" onclick="refreshList('${list.id}')" title="Refresh">↻</button>
-        </div>`;
-
-    if (!pending.length && !completed.length) {
-      html += `<div style="padding:16px 4px;font-size:0.8rem;color:var(--text-3)">No tasks — add one above.</div>`;
-    }
-
-    pending.forEach(t => { html += renderTaskItem(t, list.id); });
-
-    if (completed.length) {
-      html += `
-        <button class="completed-toggle" onclick="toggleCompleted('${list.id}')">
-          ${showComp ? '▾' : '▸'} ${completed.length} completed
-        </button>`;
-      if (showComp) {
-        completed.forEach(t => { html += renderTaskItem(t, list.id); });
-      }
-    }
-
-    html += `</div>`;
+        </div>
+        <div class="task-group-body">
+          ${itemsHtml}
+          ${compHtml}
+        </div>
+      </div>`;
   });
 
-  if (!anyTasks) {
+  if (!anyTasks && !active.some(l => (taskData[l.id]||[]).length)) {
     container.innerHTML = '<div class="state-box"><div class="state-icon">✓</div><div class="state-msg">All clear — no tasks in selected lists.</div></div>';
     return;
   }
 
-  container.innerHTML = html;
+  container.innerHTML = `<div class="task-columns">${cols}</div>`;
 }
 
 function renderTaskItem(task, listId) {

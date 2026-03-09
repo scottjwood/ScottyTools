@@ -40,24 +40,6 @@
         <div class="ledger-hero-arrow">Open Ledger →</div>
       </div>
 
-      <!-- Tasks widget -->
-      <div class="tasks-widget" id="tasksWidget" style="display:none">
-        <div class="tasks-widget-header">
-          <span class="tasks-widget-title">◈ Tasks</span>
-          <span class="tasks-widget-count" id="wTaskCount"></span>
-          <a href="tools/tasks.html" class="tasks-widget-link">View all →</a>
-        </div>
-        <div class="tasks-widget-add">
-          <input class="tasks-widget-input" id="wTaskInput" type="text"
-            placeholder="Quick add task…"
-            onkeydown="if(event.key==='Enter') wAddTask()"/>
-          <button class="tasks-widget-addbtn" onclick="wAddTask()">+ Add</button>
-        </div>
-        <div class="tasks-widget-list" id="wTaskList">
-          <div class="tasks-widget-loading">Loading tasks…</div>
-        </div>
-      </div>
-
       <!-- Featured / pinned tools -->
       <div id="featuredSection">
         <div class="section-header fade-up-2">
@@ -74,6 +56,32 @@
           <span class="section-count" id="allCount"></span>
         </div>
         <div class="tool-grid" id="allGrid"></div>
+      </div>
+
+      <!-- Tasks widget -->
+      <div class="tasks-widget" id="tasksWidget" style="display:none">
+        <div class="tasks-widget-header">
+          <div class="tasks-widget-title-row">
+            <span class="tasks-widget-title">◈ Tasks</span>
+            <span class="tasks-widget-count" id="wTaskCount"></span>
+          </div>
+          <div class="tasks-widget-controls">
+            <select class="tasks-widget-filter" id="wListFilter" onchange="wFilterChanged()">
+              <option value="all">All Lists</option>
+            </select>
+            <a href="tools/tasks.html" class="tasks-widget-link">View all →</a>
+          </div>
+        </div>
+        <div class="tasks-widget-add">
+          <input class="tasks-widget-input" id="wTaskInput" type="text"
+            placeholder="Quick add task…"
+            onkeydown="if(event.key==='Enter') wAddTask()"/>
+          <select class="tasks-widget-addlist" id="wAddList"></select>
+          <button class="tasks-widget-addbtn" onclick="wAddTask()">+ Add</button>
+        </div>
+        <div class="tasks-widget-list" id="wTaskList">
+          <div class="tasks-widget-loading">Loading tasks…</div>
+        </div>
       </div>
 
     </div>
@@ -183,8 +191,9 @@
 
     // ── Tasks widget ─────────────────────────────────────────────────────
     let wTaskData    = [];
-    let wTaskListId  = null;
+    let wActiveLists = [];
     let wTaskListMap = {};
+    let wFilterId    = 'all';
 
     Auth.onReady(user => {
       if (user) {
@@ -206,20 +215,26 @@
         const lists = await wGFetch('https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=100');
         if (!lists?.items?.length) return;
 
-        // Use saved active lists, or all lists
         const saved = JSON.parse(localStorage.getItem('tasks_active_lists') || '[]');
-        const active = saved.length
+        wActiveLists = saved.length
           ? lists.items.filter(l => saved.includes(l.id))
           : lists.items;
 
-        active.forEach(l => { wTaskListMap[l.id] = l.title; });
+        wActiveLists.forEach(l => { wTaskListMap[l.id] = l.title; });
 
-        // Default quick-add list = first active
-        wTaskListId = active[0]?.id || null;
+        // Populate filter dropdown
+        const filterSel = document.getElementById('wListFilter');
+        filterSel.innerHTML = '<option value="all">All Lists</option>' +
+          wActiveLists.map(l => `<option value="${l.id}">${escHtml(l.title)}</option>`).join('');
 
-        // Fetch tasks from all active lists
-        const results = await Promise.all(active.map(l =>
-          wGFetch(`https://tasks.googleapis.com/tasks/v1/lists/${l.id}/tasks?showCompleted=false&maxResults=50`)
+        // Populate add-to-list dropdown
+        const addSel = document.getElementById('wAddList');
+        addSel.innerHTML = wActiveLists.map(l =>
+          `<option value="${l.id}">${escHtml(l.title)}</option>`).join('');
+
+        // Fetch all tasks
+        const results = await Promise.all(wActiveLists.map(l =>
+          wGFetch(`https://tasks.googleapis.com/tasks/v1/lists/${l.id}/tasks?showCompleted=false&maxResults=100`)
             .then(d => (d?.items || []).map(t => ({ ...t, _listId: l.id })))
         ));
 
@@ -239,26 +254,41 @@
       }
     }
 
-    function wRenderTasks() {
-      const list = document.getElementById('wTaskList');
-      const count = document.getElementById('wTaskCount');
-      count.textContent = wTaskData.length + ' pending';
+    function wFilterChanged() {
+      wFilterId = document.getElementById('wListFilter').value;
+      wRenderTasks();
+    }
 
-      if (!wTaskData.length) {
-        list.innerHTML = '<div class="tasks-widget-empty">No pending tasks.</div>';
+    function wRenderTasks() {
+      const listEl = document.getElementById('wTaskList');
+      const countEl = document.getElementById('wTaskCount');
+
+      const filtered = wFilterId === 'all'
+        ? wTaskData
+        : wTaskData.filter(t => t._listId === wFilterId);
+
+      countEl.textContent = filtered.length + ' pending';
+
+      if (!filtered.length) {
+        listEl.innerHTML = '<div class="tasks-widget-empty">No pending tasks.</div>';
         return;
       }
 
-      list.innerHTML = wTaskData.slice(0, 15).map(t => {
-        const dueInfo = t.due ? wGetDue(t.due) : null;
+      listEl.innerHTML = filtered.slice(0, 20).map(t => {
+        const dueInfo  = t.due ? wGetDue(t.due) : null;
         const listName = wTaskListMap[t._listId] || '';
+        const showBadge = wFilterId === 'all' && listName;
+
         return `
           <div class="tasks-widget-item">
             <button class="tasks-widget-check"
               onclick="wComplete('${t._listId}','${t.id}')" title="Mark complete"></button>
             <div class="tasks-widget-body">
               <div class="tasks-widget-name">${escHtml(t.title)}</div>
-              ${dueInfo ? `<div class="tasks-widget-due ${dueInfo.cls}">${dueInfo.label}${listName ? ' · ' + escHtml(listName) : ''}</div>` : (listName ? `<div class="tasks-widget-due">${escHtml(listName)}</div>` : '')}
+              <div class="tasks-widget-meta">
+                ${dueInfo ? `<span class="tasks-widget-due ${dueInfo.cls}">${dueInfo.label}</span>` : ''}
+                ${showBadge ? `<span class="tasks-widget-list-badge">${escHtml(listName)}</span>` : ''}
+              </div>
             </div>
           </div>`;
       }).join('');
@@ -270,8 +300,9 @@
       const dueD  = new Date(due); dueD.setHours(0,0,0,0);
       const diff  = Math.round((dueD - today) / 86400000);
       const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const label = `${months[due.getMonth()]} ${due.getDate()}${diff === 0 ? ' · Today' : diff < 0 ? ` · ${Math.abs(diff)}d overdue` : ''}`;
-      return { label, cls: diff < 0 ? 'overdue' : diff === 0 ? 'today' : '' };
+      const label = `${months[due.getMonth()]} ${due.getDate()}${diff === 0 ? ' · Today' : diff === 1 ? ' · Tomorrow' : diff < 0 ? ` · ${Math.abs(diff)}d overdue` : ''}`;
+      const cls   = diff < 0 ? 'overdue' : diff === 0 ? 'today' : diff === 1 ? 'soon' : '';
+      return { label, cls };
     }
 
     async function wComplete(listId, taskId) {
@@ -279,7 +310,7 @@
       wRenderTasks();
       const token = Auth.getToken();
       if (!token) return;
-      await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks/${taskId}`,{
+      await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'completed' }),
@@ -287,20 +318,21 @@
     }
 
     async function wAddTask() {
-      const input = document.getElementById('wTaskInput');
-      const title = input.value.trim();
-      if (!title || !wTaskListId) return;
+      const input  = document.getElementById('wTaskInput');
+      const listId = document.getElementById('wAddList').value;
+      const title  = input.value.trim();
+      if (!title || !listId) return;
       const token = Auth.getToken();
       if (!token) return;
       input.value = '';
-      const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${wTaskListId}/tasks`, {
+      const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ title }),
       });
       if (res.ok) {
         const task = await res.json();
-        wTaskData.unshift({ ...task, _listId: wTaskListId });
+        wTaskData.unshift({ ...task, _listId: listId });
         wRenderTasks();
       }
     }
