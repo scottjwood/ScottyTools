@@ -286,6 +286,18 @@
   </div>
 </div>
 
+<!-- Confirm Modal -->
+<div class="l-modal-overlay" id="confirmModal">
+  <div class="l-modal" style="max-width:380px">
+    <div class="l-modal-title" id="confirmTitle">Are you sure?</div>
+    <div id="confirmBody" style="font-size:0.85rem;color:var(--l-text-2);line-height:1.6;margin-bottom:4px"></div>
+    <div class="l-modal-actions">
+      <button class="l-btn l-btn-ghost" onclick="closeModal('confirmModal')" id="confirmCancelBtn">Cancel</button>
+      <button class="l-btn l-btn-danger" id="confirmOkBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast container -->
 <div class="l-toast-container" id="toastContainer"></div>
 
@@ -878,7 +890,17 @@ async function saveEdit() {
 // DELETE ENTRY
 // ═══════════════════════════════════════════════════════════
 async function deleteEntry(id) {
-  if (!confirm('Delete this entry?')) return;
+  const entry = state.pending.find(e => e.id === id);
+  const label = entry ? `${isoToDisplay(entry.date)} — ${entry.client}` : 'this entry';
+  showConfirm({
+    title: 'Delete Entry',
+    body: `Delete <strong>${label}</strong>?<br><span style="color:var(--l-text-3);font-size:0.78rem">This cannot be undone.</span>`,
+    confirmLabel: 'Delete',
+    onConfirm: () => _doDeleteEntry(id),
+  });
+}
+
+async function _doDeleteEntry(id) {
   state.pending = state.pending.filter(e => e.id !== id);
   renderPending();
   try {
@@ -928,7 +950,27 @@ function copyInvoiceText() {
 async function markInvoiced(client) {
   const entries = state.pending.filter(e => e.client === client);
   if (!entries.length) return;
-  if (!confirm(`Mark all ${entries.length} entries for "${client}" as invoiced?`)) return;
+  const rate_used = getClientRate(client);
+  const total     = entries.reduce((s,e) => s + calcAmount(e), 0);
+  const hrs       = entries.reduce((s,e) => s + calcBillable(e), 0);
+  showConfirm({
+    title: `Invoice ${client}`,
+    body: `Mark <strong>${entries.length} entr${entries.length > 1 ? 'ies' : 'y'}</strong> as invoiced?
+           <br><br>
+           <span style="font-family:var(--l-font-mono);font-size:0.85rem">
+             ${hrs.toFixed(2)}h &nbsp;·&nbsp; $${total.toFixed(2)}
+           </span>
+           <br><span style="color:var(--l-text-3);font-size:0.78rem">
+             These entries will move to History and cannot be moved back.
+           </span>`,
+    confirmLabel: 'Mark as Invoiced',
+    danger: false,
+    onConfirm: () => _doMarkInvoiced(client),
+  });
+}
+
+async function _doMarkInvoiced(client) {
+  const entries = state.pending.filter(e => e.client === client);
 
   const rate_used = getClientRate(client);
   const total     = entries.reduce((s,e) => s + calcAmount(e), 0);
@@ -1086,12 +1128,22 @@ async function updateClientRate(idx, val) {
 }
 
 async function removeClient(idx) {
-  if (!confirm(`Remove "${state.clients[idx].name}"?`)) return;
-  state.clients.splice(idx, 1);
-  renderClientTable();
-  populateClientSelects();
-  try { await apiWrite('saveSettings', { rate: state.rate, clients: state.clients, pin: state.pin }); }
-  catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
+  const clientName = state.clients[idx].name;
+  showConfirm({
+    title: 'Remove Client',
+    body: `Remove <strong>${clientName}</strong>?<br><span style="color:var(--l-text-3);font-size:0.78rem">This only removes them from your client list, not any existing entries.</span>`,
+    confirmLabel: 'Remove',
+    onConfirm: async () => {
+      state.clients.splice(idx, 1);
+      renderClientTable();
+      populateClientSelects();
+      try { await apiWrite('saveSettings', { rate: state.rate, clients: state.clients, pin: state.pin }); }
+      catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
+    },
+  });
+}
+
+
 }
 
 function clearOverrideURLs() {
@@ -1153,6 +1205,26 @@ function closeDrawer() {
 // ═══════════════════════════════════════════════════════════
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+/**
+ * showConfirm({ title, body, confirmLabel, danger, onConfirm })
+ * Replaces native confirm() with a styled modal.
+ */
+function showConfirm({ title, body, confirmLabel = 'Confirm', danger = true, onConfirm }) {
+  document.getElementById('confirmTitle').textContent  = title;
+  document.getElementById('confirmBody').innerHTML     = body;
+  const okBtn = document.getElementById('confirmOkBtn');
+  okBtn.textContent  = confirmLabel;
+  okBtn.className    = danger ? 'l-btn l-btn-danger' : 'l-btn l-btn-primary';
+  // Remove old listener and attach new one
+  const newBtn = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(newBtn, okBtn);
+  newBtn.addEventListener('click', () => {
+    closeModal('confirmModal');
+    onConfirm();
+  });
+  openModal('confirmModal');
+}
 
 document.querySelectorAll('.l-modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
