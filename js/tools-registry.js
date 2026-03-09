@@ -9,24 +9,13 @@
  */
 
 const CATEGORIES = {
-  DIGITAL:    { id: 'digital',    label: 'Digital Tools',      icon: '◈' },
-  FOUNDRY:    { id: 'foundry',    label: 'Bronze Foundry',     icon: '⬟' },
-  CARPENTRY:  { id: 'carpentry',  label: 'Finish Carpentry',   icon: '⬧' },
-  REVIT:      { id: 'revit',      label: 'Revit & BIM',        icon: '⬨' },
-  GENERAL:    { id: 'general',    label: 'General',            icon: '◇' },
+  DIGITAL:  { id: 'digital',  label: 'Digital Tools',  icon: '◈' },
+  FOUNDRY:  { id: 'foundry',  label: 'Bronze Foundry', icon: '⬟' },
+  GENERAL:  { id: 'general',  label: 'General',        icon: '◇' },
 };
 
 const TOOLS = [
   // ── DIGITAL TOOLS ─────────────────────────────────────────────────────────
-  {
-    id: 'aspect-ratio',
-    label: 'Aspect Ratio Calculator',
-    description: 'Calculate and convert between common video/image aspect ratios.',
-    category: CATEGORIES.DIGITAL,
-    path: 'tools/aspect-ratio.html',
-    tags: ['video', 'resolution', 'dimensions'],
-    featured: true,
-  },
   {
     id: 'color-converter',
     label: 'Color Space Converter',
@@ -48,27 +37,6 @@ const TOOLS = [
     featured: true,
   },
 
-  // ── FINISH CARPENTRY ──────────────────────────────────────────────────────
-  {
-    id: 'board-foot',
-    label: 'Board Foot Calculator',
-    description: 'Calculate board feet from dimensions for lumber purchasing.',
-    category: CATEGORIES.CARPENTRY,
-    path: 'tools/board-foot.html',
-    tags: ['lumber', 'wood', 'material'],
-    featured: true,
-  },
-  {
-    id: 'miter-angle',
-    label: 'Miter Angle Calculator',
-    description: 'Calculate miter and bevel angles for polygons and compound cuts.',
-    category: CATEGORIES.CARPENTRY,
-    path: 'tools/miter-angle.html',
-    tags: ['angle', 'miter', 'crown', 'saw'],
-    featured: false,
-  },
-
-  // ── GENERAL ───────────────────────────────────────────────────────────────
   // ── GENERAL ───────────────────────────────────────────────────────────────
   {
     id: 'ledger',
@@ -86,17 +54,6 @@ const TOOLS = [
     category: CATEGORIES.GENERAL,
     path: 'tools/folder-structure.html',
     tags: ['folders', 'project', 'setup', 'structure', 'organize'],
-    featured: true,
-  },
-
-  // ── REVIT & BIM ───────────────────────────────────────────────────────────
-  {
-    id: 'unit-converter',
-    label: 'Architectural Unit Converter',
-    description: "Convert between feet-inches, decimal feet, mm, and meters.",
-    category: CATEGORIES.REVIT,
-    path: 'tools/unit-converter.html',
-    tags: ['units', 'conversion', 'imperial', 'metric'],
     featured: true,
   },
 ];
