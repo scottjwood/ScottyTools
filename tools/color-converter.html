@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Color Space Converter — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    .tool-page { padding-top: var(--nav-h); min-height: 100vh; background: var(--bg); }
+    .tool-container { max-width: 680px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    .tool-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); text-decoration: none; transition: color 150ms ease;
+      margin-bottom: 16px;
+    }
+    .tool-back:hover { color: var(--accent); }
+    .tool-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--text-1); line-height: 1; margin-bottom: 6px;
+    }
+    .tool-title span { color: var(--accent); }
+    .tool-sub { font-size: 0.82rem; color: var(--text-3); margin-bottom: 32px; }
+
+    /* ── Color preview ───────────────────────────────────────── */
+    .color-preview {
+      width: 100%; height: 80px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+      transition: background-color 150ms ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .color-preview-label {
+      position: absolute; bottom: 8px; right: 12px;
+      font-family: 'DM Mono', monospace; font-size: 0.7rem;
+      opacity: 0.6; mix-blend-mode: difference; color: white;
+    }
+
+    /* ── Input panel ─────────────────────────────────────────── */
+    .panel {
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin-bottom: 16px;
+    }
+    .panel-tabs {
+      display: flex; border-bottom: 1px solid var(--border);
+    }
+    .panel-tab {
+      flex: 1; padding: 10px 8px; text-align: center;
+      font-family: 'DM Mono', monospace; font-size: 0.72rem;
+      letter-spacing: 0.06em; color: var(--text-3);
+      background: none; border: none; cursor: pointer;
+      border-right: 1px solid var(--border);
+      transition: all 150ms ease;
+    }
+    .panel-tab:last-child { border-right: none; }
+    .panel-tab:hover { color: var(--text-2); background: rgba(255,255,255,0.02); }
+    .panel-tab.active { color: var(--accent); background: rgba(232,160,32,0.06); }
+    .panel-body { padding: 18px 20px; }
+
+    /* ── Input modes ─────────────────────────────────────────── */
+    .input-mode { display: none; }
+    .input-mode.active { display: block; }
+
+    /* HEX */
+    .hex-wrap {
+      display: flex; align-items: stretch;
+      background: #1a1c1e; border: 1px solid var(--border);
+      border-radius: 6px; transition: border-color 150ms ease;
+    }
+    .hex-wrap:focus-within { border-color: var(--accent); }
+    .hex-prefix {
+      display: flex; align-items: center; padding: 0 6px 0 14px;
+      font-family: 'DM Mono', monospace; font-size: 1.4rem;
+      color: var(--text-3); user-select: none;
+    }
+    .hex-input {
+      flex: 1; background: transparent; border: none;
+      color: var(--text-1); font-family: 'DM Mono', monospace;
+      font-size: 1.4rem; padding: 12px 14px 12px 4px;
+      outline: none; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .hex-input::placeholder { color: var(--text-3); }
+    .hex-swatch {
+      width: 44px; flex-shrink: 0; border-radius: 0 5px 5px 0;
+      cursor: pointer; border: none; border-left: 1px solid var(--border);
+      transition: opacity 150ms ease;
+    }
+    .hex-swatch:hover { opacity: 0.85; }
+
+    /* RGB / HSL / HSB / CMYK */
+    .channel-grid {
+      display: grid; gap: 10px;
+    }
+    .channel-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .channel-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .channel-group { display: flex; flex-direction: column; gap: 5px; }
+    .channel-label {
+      font-size: 0.62rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-3);
+    }
+    .channel-input {
+      background: #1a1c1e; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1);
+      font-family: 'DM Mono', monospace; font-size: 1rem;
+      padding: 10px 10px; outline: none; width: 100%;
+      transition: border-color 150ms ease; text-align: center;
+      -webkit-appearance: none;
+    }
+    .channel-input::-webkit-inner-spin-button,
+    .channel-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .channel-input[type=number] { -moz-appearance: textfield; }
+    .channel-input:focus { border-color: var(--accent); }
+
+    /* ── Output cards ────────────────────────────────────────── */
+    .outputs { display: flex; flex-direction: column; gap: 8px; }
+    .output-card {
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; cursor: pointer; transition: all 150ms ease;
+    }
+    .output-card:hover { border-color: var(--border-hi); background: #161818; }
+    .output-card.copied {
+      border-color: rgba(74,222,128,0.4);
+      background: rgba(74,222,128,0.05);
+    }
+    .output-format {
+      font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--text-3); min-width: 48px; flex-shrink: 0;
+    }
+    .output-value {
+      font-family: 'DM Mono', monospace; font-size: 0.88rem;
+      color: var(--text-1); flex: 1; word-break: break-all;
+    }
+    .output-copy {
+      font-size: 0.65rem; color: var(--text-3);
+      transition: color 150ms ease; flex-shrink: 0;
+    }
+    .output-card:hover .output-copy { color: var(--text-2); }
+    .output-card.copied .output-copy { color: #4ade80; }
+
+    /* ── Color picker hint ───────────────────────────────────── */
+    .pick-hint {
+      font-size: 0.72rem; color: var(--text-3); margin-top: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .pick-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-3);
+      font-family: 'DM Mono', monospace; font-size: 0.7rem;
+      padding: 3px 8px; cursor: pointer; transition: all 150ms ease;
+    }
+    .pick-btn:hover { border-color: var(--accent); color: var(--accent); }
+    input[type="color"] { display: none; }
+
+    /* ── Error ───────────────────────────────────────────────── */
+    .parse-error {
+      font-size: 0.72rem; color: #f87171;
+      font-family: 'DM Mono', monospace; margin-top: 8px; min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+
+<div class="tool-page">
+  <div class="tool-container">
+    <a href="../index.html" class="tool-back">← ScottyTools</a>
+    <div class="tool-title">Color <span>Converter</span></div>
+    <div class="tool-sub">Convert between HEX, RGB, HSL, HSB, and CMYK. Click any result to copy.</div>
+
+    <!-- Preview swatch -->
+    <div class="color-preview" id="colorPreview">
+      <span class="color-preview-label" id="previewLabel"></span>
+    </div>
+
+    <!-- Input panel -->
+    <div class="panel">
+      <div class="panel-tabs">
+        <button class="panel-tab active" onclick="switchTab('hex')">HEX</button>
+        <button class="panel-tab" onclick="switchTab('rgb')">RGB</button>
+        <button class="panel-tab" onclick="switchTab('hsl')">HSL</button>
+        <button class="panel-tab" onclick="switchTab('hsb')">HSB</button>
+        <button class="panel-tab" onclick="switchTab('cmyk')">CMYK</button>
+      </div>
+      <div class="panel-body">
+
+        <!-- HEX -->
+        <div class="input-mode active" id="mode-hex">
+          <div class="hex-wrap">
+            <span class="hex-prefix">#</span>
+            <input class="hex-input" id="hexInput" type="text"
+              maxlength="6" placeholder="e8a020"
+              oninput="fromHex(this.value)"/>
+            <input type="color" id="colorPicker" oninput="fromPicker(this.value)"/>
+            <button class="hex-swatch" id="hexSwatch" onclick="document.getElementById('colorPicker').click()"
+              title="Open color picker"></button>
+          </div>
+          <div class="pick-hint">
+            <button class="pick-btn" onclick="document.getElementById('colorPicker').click()">
+              ⊕ Pick color
+            </button>
+          </div>
+        </div>
+
+        <!-- RGB -->
+        <div class="input-mode" id="mode-rgb">
+          <div class="channel-grid cols-3">
+            <div class="channel-group">
+              <div class="channel-label">R</div>
+              <input class="channel-input" id="rgbR" type="number" min="0" max="255"
+                placeholder="0" oninput="fromRGB()"/>
+            </div>
+            <div class="channel-group">
+              <div class="channel-label">G</div>
+              <input class="channel-input" id="rgbG" type="number" min="0" max="255"
+                placeholder="0" oninput="fromRGB()"/>
+            </div>
+            <div class="channel-group">
+              <div class="channel-label">B</div>
+              <input class="channel-input" id="rgbB" type="number" min="0" max="255"
+                placeholder="0" oninput="fromRGB()"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- HSL -->
+        <div class="input-mode" id="mode-hsl">
+          <div class="channel-grid cols-3">
+            <div class="channel-group">
+              <div class="channel-label">H (0–360)</div>
+              <input class="channel-input" id="hslH" type="number" min="0" max="360"
+                placeholder="0" oninput="fromHSL()"/>
+            </div>
+            <div class="channel-group">
+              <div class="channel-label">S (%)</div>
+              <input class="channel-input" id="hslS" type="number" min="0" max="100"
+                placeholder="0" oninput="fromHSL()"/>
+            </div>
+            <div class="channel-group">
+              <div class="channel-label">L (%)</div>
+              <input class="channel-input" id="hslL" type="number" min="0" max="100"
+                placeholder="0" oninput="fromHSL()"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- HSB -->
+        <div class="input-mode" id="mode-hsb">
+          <div class="channel-grid cols-3">
+            <div class="channel-group">
+              <div class="channel-label">H (0–360)</div>
+              <input class="channel-input" id="hsbH" type="number" min="0" max="360"
+                placeholder="0" oninput="fromHSB()"/>
+            </div>
+            <div class="channel-group">
+              <div class="channel-label">S (%)</div>
+              <input class="channel-input" id="hsbS" type="number" min="0" max="100"
+                placeholder="0" oninput="fromHSB()"/>
+            </div>
+            <div class="channel-group">
+              <div class="channel-label">B (%)</div>
+              <input class="channel-input" id="hsbB" type="number" min="0" max="100"
+                placeholder="0" oninput="fromHSB()"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- CMYK -->
+        <div class="input-mode" id="mode-cmyk">
+          <div class="channel-grid cols-4">
+            <div class="channel-group">
+              <div class="channel-label">C (%)</div>
+              <input class="channel-input" id="cmykC" type="number" min="0" max="100"
+                placeholder="0" oninput="fromCMYK()"/>
+            </div>
+            <div class="channel-group">
+              <div class="channel-label">M (%)</div>
+              <input class="channel-input" id="cmykM" type="number" min="0" max="100"
+                placeholder="0" oninput="fromCMYK()"/>
+            </div>
+            <div class="channel-group">
+              <div class="channel-label">Y (%)</div>
+              <input class="channel-input" id="cmykY" type="number" min="0" max="100"
+                placeholder="0" oninput="fromCMYK()"/>
+            </div>
+            <div class="channel-group">
+              <div class="channel-label">K (%)</div>
+              <input class="channel-input" id="cmykK" type="number" min="0" max="100"
+                placeholder="0" oninput="fromCMYK()"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="parse-error" id="parseError"></div>
+      </div>
+    </div>
+
+    <!-- Outputs -->
+    <div class="outputs" id="outputs"></div>
+
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/tools-registry.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.init();
+
+// ── State ────────────────────────────────────────────────────────────────
+let currentTab = 'hex';
+let currentRGB = null; // { r, g, b } — source of truth
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.panel-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', ['hex','rgb','hsl','hsb','cmyk'][i] === tab);
+  });
+  document.querySelectorAll('.input-mode').forEach(el => el.classList.remove('active'));
+  document.getElementById('mode-' + tab).classList.add('active');
+
+  // Populate the newly shown inputs from currentRGB
+  if (currentRGB) populateInputs(currentRGB, tab);
+  currentTab = tab;
+}
+
+function populateInputs(rgb, tab) {
+  const { r, g, b } = rgb;
+  if (tab === 'hex') {
+    document.getElementById('hexInput').value = toHex(r, g, b);
+    document.getElementById('hexSwatch').style.background = '#' + toHex(r, g, b);
+    document.getElementById('colorPicker').value = '#' + toHex(r, g, b);
+  } else if (tab === 'rgb') {
+    document.getElementById('rgbR').value = r;
+    document.getElementById('rgbG').value = g;
+    document.getElementById('rgbB').value = b;
+  } else if (tab === 'hsl') {
+    const [h, s, l] = rgbToHSL(r, g, b);
+    document.getElementById('hslH').value = h;
+    document.getElementById('hslS').value = s;
+    document.getElementById('hslL').value = l;
+  } else if (tab === 'hsb') {
+    const [h, s, bv] = rgbToHSB(r, g, b);
+    document.getElementById('hsbH').value = h;
+    document.getElementById('hsbS').value = s;
+    document.getElementById('hsbB').value = bv;
+  } else if (tab === 'cmyk') {
+    const [c, m, y, k] = rgbToCMYK(r, g, b);
+    document.getElementById('cmykC').value = c;
+    document.getElementById('cmykM').value = m;
+    document.getElementById('cmykY').value = y;
+    document.getElementById('cmykK').value = k;
+  }
+}
+
+// ── From inputs ───────────────────────────────────────────────────────────
+function fromHex(val) {
+  const clean = val.replace(/[^0-9a-fA-F]/g, '');
+  if (clean.length === 6) {
+    const r = parseInt(clean.slice(0,2), 16);
+    const g = parseInt(clean.slice(2,4), 16);
+    const b = parseInt(clean.slice(4,6), 16);
+    setRGB(r, g, b);
+  } else if (clean.length === 3) {
+    const r = parseInt(clean[0]+clean[0], 16);
+    const g = parseInt(clean[1]+clean[1], 16);
+    const b = parseInt(clean[2]+clean[2], 16);
+    setRGB(r, g, b);
+  } else {
+    clearOutputs();
+  }
+  document.getElementById('hexSwatch').style.background = clean.length >= 3 ? '#' + clean : '';
+}
+
+function fromPicker(val) {
+  const clean = val.replace('#','');
+  document.getElementById('hexInput').value = clean.toUpperCase();
+  fromHex(clean);
+}
+
+function fromRGB() {
+  const r = clamp(parseInt(document.getElementById('rgbR').value) || 0, 0, 255);
+  const g = clamp(parseInt(document.getElementById('rgbG').value) || 0, 0, 255);
+  const b = clamp(parseInt(document.getElementById('rgbB').value) || 0, 0, 255);
+  setRGB(r, g, b);
+}
+
+function fromHSL() {
+  const h = clamp(parseFloat(document.getElementById('hslH').value) || 0, 0, 360);
+  const s = clamp(parseFloat(document.getElementById('hslS').value) || 0, 0, 100);
+  const l = clamp(parseFloat(document.getElementById('hslL').value) || 0, 0, 100);
+  const [r, g, b] = hslToRGB(h, s, l);
+  setRGB(r, g, b);
+}
+
+function fromHSB() {
+  const h  = clamp(parseFloat(document.getElementById('hsbH').value) || 0, 0, 360);
+  const s  = clamp(parseFloat(document.getElementById('hsbS').value) || 0, 0, 100);
+  const bv = clamp(parseFloat(document.getElementById('hsbB').value) || 0, 0, 100);
+  const [r, g, b] = hsbToRGB(h, s, bv);
+  setRGB(r, g, b);
+}
+
+function fromCMYK() {
+  const c = clamp(parseFloat(document.getElementById('cmykC').value) || 0, 0, 100);
+  const m = clamp(parseFloat(document.getElementById('cmykM').value) || 0, 0, 100);
+  const y = clamp(parseFloat(document.getElementById('cmykY').value) || 0, 0, 100);
+  const k = clamp(parseFloat(document.getElementById('cmykK').value) || 0, 0, 100);
+  const [r, g, b] = cmykToRGB(c, m, y, k);
+  setRGB(r, g, b);
+}
+
+// ── Core ──────────────────────────────────────────────────────────────────
+function setRGB(r, g, b) {
+  currentRGB = { r, g, b };
+  const hex = toHex(r, g, b);
+
+  // Update preview
+  document.getElementById('colorPreview').style.background = '#' + hex;
+  document.getElementById('previewLabel').textContent = '#' + hex.toUpperCase();
+  document.getElementById('colorPicker').value = '#' + hex;
+  document.getElementById('hexSwatch').style.background = '#' + hex;
+  document.getElementById('parseError').textContent = '';
+
+  // Derive all formats
+  const [h_l, s_l, l_l] = rgbToHSL(r, g, b);
+  const [h_b, s_b, b_b] = rgbToHSB(r, g, b);
+  const [c, m, y, k]    = rgbToCMYK(r, g, b);
+
+  renderOutputs([
+    { fmt: 'HEX',  val: `#${hex.toUpperCase()}` },
+    { fmt: 'RGB',  val: `rgb(${r}, ${g}, ${b})` },
+    { fmt: 'HSL',  val: `hsl(${h_l}, ${s_l}%, ${l_l}%)` },
+    { fmt: 'HSB',  val: `hsb(${h_b}, ${s_b}%, ${b_b}%)` },
+    { fmt: 'CMYK', val: `cmyk(${c}%, ${m}%, ${y}%, ${k}%)` },
+  ]);
+}
+
+function clearOutputs() {
+  currentRGB = null;
+  document.getElementById('colorPreview').style.background = '';
+  document.getElementById('previewLabel').textContent = '';
+  document.getElementById('outputs').innerHTML = '';
+}
+
+function renderOutputs(items) {
+  document.getElementById('outputs').innerHTML = items.map(({ fmt, val }) => `
+    <div class="output-card" onclick="copyOutput(this, '${val.replace(/'/g, "\\'")}')">
+      <span class="output-format">${fmt}</span>
+      <span class="output-value">${val}</span>
+      <span class="output-copy">copy</span>
+    </div>`).join('');
+}
+
+function copyOutput(card, val) {
+  navigator.clipboard.writeText(val).then(() => {
+    card.classList.add('copied');
+    card.querySelector('.output-copy').textContent = '✓';
+    setTimeout(() => {
+      card.classList.remove('copied');
+      card.querySelector('.output-copy').textContent = 'copy';
+    }, 1800);
+  });
+}
+
+// ── Color math ────────────────────────────────────────────────────────────
+function toHex(r, g, b) {
+  return [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+function round(v) { return Math.round(v); }
+
+function rgbToHSL(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return [round(h * 360), round(s * 100), round(l * 100)];
+}
+
+function hslToRGB(h, s, l) {
+  s /= 100; l /= 100;
+  const c = (1 - Math.abs(2*l - 1)) * s;
+  const x = c * (1 - Math.abs((h/60) % 2 - 1));
+  const m = l - c/2;
+  let r=0,g=0,b=0;
+  if      (h < 60)  { r=c; g=x; b=0; }
+  else if (h < 120) { r=x; g=c; b=0; }
+  else if (h < 180) { r=0; g=c; b=x; }
+  else if (h < 240) { r=0; g=x; b=c; }
+  else if (h < 300) { r=x; g=0; b=c; }
+  else              { r=c; g=0; b=x; }
+  return [round((r+m)*255), round((g+m)*255), round((b+m)*255)];
+}
+
+function rgbToHSB(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+  let h = 0, s = max === 0 ? 0 : d / max;
+  if (d !== 0) {
+    switch (max) {
+      case r: h = ((g-b)/d + (g<b?6:0)) / 6; break;
+      case g: h = ((b-r)/d + 2) / 6; break;
+      case b: h = ((r-g)/d + 4) / 6; break;
+    }
+  }
+  return [round(h*360), round(s*100), round(max*100)];
+}
+
+function hsbToRGB(h, s, v) {
+  s /= 100; v /= 100;
+  const i = Math.floor(h/60) % 6;
+  const f = h/60 - Math.floor(h/60);
+  const p = v*(1-s), q = v*(1-f*s), t = v*(1-(1-f)*s);
+  let r,g,b;
+  switch(i) {
+    case 0: r=v;g=t;b=p; break; case 1: r=q;g=v;b=p; break;
+    case 2: r=p;g=v;b=t; break; case 3: r=p;g=q;b=v; break;
+    case 4: r=t;g=p;b=v; break; default: r=v;g=p;b=q;
+  }
+  return [round(r*255), round(g*255), round(b*255)];
+}
+
+function rgbToCMYK(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const k = 1 - Math.max(r, g, b);
+  if (k === 1) return [0, 0, 0, 100];
+  const c = (1-r-k) / (1-k);
+  const m = (1-g-k) / (1-k);
+  const y = (1-b-k) / (1-k);
+  return [round(c*100), round(m*100), round(y*100), round(k*100)];
+}
+
+function cmykToRGB(c, m, y, k) {
+  c /= 100; m /= 100; y /= 100; k /= 100;
+  return [
+    round(255 * (1-c) * (1-k)),
+    round(255 * (1-m) * (1-k)),
+    round(255 * (1-y) * (1-k)),
+  ];
+}
+
+// ── Init with ScottyTools amber ───────────────────────────────────────────
+fromHex('e8a020');
+document.getElementById('hexInput').value = 'E8A020';
+</script>
+</body>
+</html>
