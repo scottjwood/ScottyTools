@@ -300,6 +300,41 @@
       .step-temp { display: none; }
       .step-cols-header .col-head:nth-child(4) { display: none; }
     }
+
+    /* ── Google action buttons ───────────────────────────────── */
+    .g-action-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: #1a1c1e;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-2);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+    .g-action-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .g-action-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .g-action-btn.success {
+      border-color: rgba(74,222,128,0.4);
+      color: #4ade80;
+    }
+    .g-action-status {
+      font-size: 0.75rem;
+      color: var(--text-3);
+      display: flex;
+      align-items: center;
+      font-family: 'DM Mono', monospace;
+    }
+    .g-action-status.success { color: #4ade80; }
+    .g-action-status.error   { color: #f87171; }
   </style>
 </head>
 <body>
@@ -448,6 +483,29 @@
         </div>
 
         <!-- Step column headers -->
+        <!-- Google actions -->
+        <div style="display:flex;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+          <button class="g-action-btn" id="btnAddTask" onclick="addToTasks()" disabled>
+            <svg width="14" height="14" viewBox="0 0 18 18" style="flex-shrink:0">
+              <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+              <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+              <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
+              <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
+            </svg>
+            Add to Tasks
+          </button>
+          <button class="g-action-btn" id="btnAddCal" onclick="addToCalendar()" disabled>
+            <svg width="14" height="14" viewBox="0 0 18 18" style="flex-shrink:0">
+              <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+              <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
+              <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
+            </svg>
+            Add to Calendar
+          </button>
+          <span class="g-action-status" id="gActionStatus"></span>
+        </div>
+
         <div class="step-cols-header">
           <div class="col-head"></div>
           <div class="col-head">Step</div>
@@ -463,10 +521,19 @@
   </div>
 </div>
 
+<script src="../js/auth.js"></script>
 <script src="../js/tools-registry.js"></script>
 <script src="../js/nav.js"></script>
 <script>
 Nav.init();
+
+// Re-enable Google buttons when auth state is known
+if (typeof Auth !== 'undefined') {
+  Auth.onReady(() => {
+    // Re-run calculate to refresh button states
+    calculate();
+  });
+}
 
 // ── Default step definitions ──────────────────────────────────────────────
 const DEFAULT_STEPS = [
@@ -615,6 +682,12 @@ function calculate() {
 
   // ── Render step list ──
   renderSteps(stepTimes);
+
+  // ── Update Google action buttons ──
+  updateScheduleState(mixStartDT, kilnDT, pourDT,
+    parseFloat(document.getElementById('outPowder').textContent) || 0,
+    parseFloat(document.getElementById('outWater').textContent)  || 0,
+  );
 }
 
 // ── Render burnout step list ──────────────────────────────────────────────
@@ -670,6 +743,173 @@ function updateStepHrs(idx, val) {
     steps[idx].hrs = hrs;
     saveSteps();
     calculate();
+  }
+}
+
+// ── Google Tasks & Calendar ──────────────────────────────────────────────
+
+// Shared state for current schedule results
+let _scheduleState = null;
+
+function updateScheduleState(mixDT, kilnDT, pourDT, powder, water) {
+  _scheduleState = { mixDT, kilnDT, pourDT, powder, water };
+  // Enable buttons if signed in and schedule is calculated
+  const hasSchedule = mixDT && kilnDT && pourDT;
+  const signedIn = typeof Auth !== 'undefined' && Auth.isSignedIn();
+  document.getElementById('btnAddTask').disabled = !(hasSchedule && signedIn);
+  document.getElementById('btnAddCal').disabled  = !(hasSchedule && signedIn);
+}
+
+function setGStatus(msg, type = '') {
+  const el = document.getElementById('gActionStatus');
+  el.textContent = msg;
+  el.className = 'g-action-status ' + type;
+  if (type === 'success') setTimeout(() => { el.textContent = ''; el.className = 'g-action-status'; }, 4000);
+}
+
+function buildTaskNotes(s) {
+  const fmt = d => fmtTime(d) + ' · ' + fmtDate(d);
+  const diameter = document.getElementById('diameter').value;
+  const height   = document.getElementById('height').value;
+  const multi    = document.getElementById('multiplier').value;
+  return [
+    '🔵 START MIXING:  ' + fmt(s.mixDT),
+    '🟡 PUT IN KILN:   ' + fmt(s.kilnDT),
+    '🔴 POUR BRONZE:   ' + fmt(s.pourDT),
+    '',
+    'Flask: ' + diameter + '" × ' + height + '" · Multiplier: ' + multi + 'x',
+    'Investment: ' + document.getElementById('outPowder').textContent.replace(/[^\d.]/g,'') + 'g powder · ' +
+      document.getElementById('outWater').textContent.replace(/[^\d.]/g,'') + 'ml water',
+    '',
+    'Burnout steps:',
+    ...steps.filter(s => s.key !== 'mix').map(st =>
+      '  ' + st.name + ' — ' + fmtHrs(st.hrs) +
+      (st.tempF ? ' @ ' + st.tempF + '°F' : '')
+    ),
+  ].join('\n');
+}
+
+async function addToTasks() {
+  if (!_scheduleState) return;
+  const token = Auth.getToken();
+  if (!token) { setGStatus('Not signed in', 'error'); return; }
+
+  const btn = document.getElementById('btnAddTask');
+  btn.disabled = true;
+  setGStatus('Adding task…');
+
+  try {
+    // Get or create a "ScottyTools" task list
+    const listId = await getOrCreateTaskList(token, 'ScottyTools');
+
+    // Due date = pour time (RFC 3339 format, date only for Tasks API)
+    const pourISO = _scheduleState.pourDT.toISOString();
+
+    const task = {
+      title: '🔴 Pour Bronze — ' + fmtDate(_scheduleState.pourDT),
+      notes: buildTaskNotes(_scheduleState),
+      due:   pourISO,
+    };
+
+    const res = await fetch(
+      `https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(task),
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'Tasks API error');
+    }
+
+    btn.classList.add('success');
+    setGStatus('✓ Task added to ScottyTools list', 'success');
+    setTimeout(() => { btn.classList.remove('success'); btn.disabled = false; }, 4000);
+  } catch(e) {
+    setGStatus('Error: ' + e.message, 'error');
+    btn.disabled = false;
+  }
+}
+
+async function getOrCreateTaskList(token, name) {
+  // Fetch existing lists
+  const res = await fetch('https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=100', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  const data = await res.json();
+  const existing = (data.items || []).find(l => l.title === name);
+  if (existing) return existing.id;
+
+  // Create it
+  const create = await fetch('https://tasks.googleapis.com/tasks/v1/users/@me/lists', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ title: name }),
+  });
+  const newList = await create.json();
+  return newList.id;
+}
+
+async function addToCalendar() {
+  if (!_scheduleState) return;
+  const token = Auth.getToken();
+  if (!token) { setGStatus('Not signed in', 'error'); return; }
+
+  const btn = document.getElementById('btnAddCal');
+  btn.disabled = true;
+  setGStatus('Adding event…');
+
+  try {
+    const s = _scheduleState;
+    // 1-hour event at pour time
+    const start = s.pourDT.toISOString();
+    const end   = new Date(s.pourDT.getTime() + 3600000).toISOString();
+
+    const event = {
+      summary:     '🔴 Pour Bronze',
+      description: buildTaskNotes(s),
+      start: { dateTime: start },
+      end:   { dateTime: end },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'popup', minutes: 30 }, // remind 30 min before pour
+        ],
+      },
+    };
+
+    const res = await fetch(
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(event),
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'Calendar API error');
+    }
+
+    btn.classList.add('success');
+    setGStatus('✓ Event added to Calendar', 'success');
+    setTimeout(() => { btn.classList.remove('success'); btn.disabled = false; }, 4000);
+  } catch(e) {
+    setGStatus('Error: ' + e.message, 'error');
+    btn.disabled = false;
   }
 }
 
