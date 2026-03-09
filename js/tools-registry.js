@@ -122,6 +122,7 @@ function toggleUnpinned(toolId, forceUnpin) {
   if (forceUnpin && idx === -1) list.push(toolId);
   else if (!forceUnpin && idx !== -1) list.splice(idx, 1);
   localStorage.setItem('st_unpinned', JSON.stringify(list));
+  if (typeof Prefs !== 'undefined') Prefs.save();
 }
 
 function getToolsByCategory(categoryId) {
@@ -158,6 +159,7 @@ function toggleFavorite(toolId) {
     const idx = favs.indexOf(toolId);
     if (idx === -1) favs.push(toolId); else favs.splice(idx, 1);
     localStorage.setItem('st_favorites', JSON.stringify(favs));
+    if (typeof Prefs !== 'undefined') Prefs.save();
     return favs.includes(toolId);
   }
 }
@@ -168,4 +170,26 @@ function isFavorite(toolId) {
     return !getUnpinned().includes(toolId); // featured = pinned unless unpinned
   }
   return getFavorites().includes(toolId);
+}
+
+// ── Card order (localStorage) ─────────────────────────────────────────────────
+
+function getOrder(gridKey) {
+  try { return JSON.parse(localStorage.getItem('st_order_' + gridKey) || '[]'); }
+  catch { return []; }
+}
+
+function saveOrder(gridKey, ids) {
+  localStorage.setItem('st_order_' + gridKey, JSON.stringify(ids));
+  if (typeof Prefs !== 'undefined') Prefs.save();
+}
+
+function applyOrder(tools, gridKey) {
+  const order = getOrder(gridKey);
+  if (!order.length) return tools;
+  // Sort by saved order, append any new tools not yet in order at the end
+  const ordered = [];
+  order.forEach(id => { const t = tools.find(t => t.id === id); if (t) ordered.push(t); });
+  tools.forEach(t => { if (!order.includes(t.id)) ordered.push(t); });
+  return ordered;
 }

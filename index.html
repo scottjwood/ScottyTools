@@ -99,6 +99,28 @@
     }
     .tasks-widget-empty { padding: 28px 16px; font-size: 0.8rem; color: var(--text-3); text-align: center; }
     .tasks-widget-loading { padding: 14px 16px; font-size: 0.75rem; color: var(--text-3); }
+
+    /* ── Drag and drop ────────────────────────────────────────────── */
+    .tool-card[draggable] { cursor: grab; }
+    .tool-card[draggable]:active { cursor: grabbing; }
+    .tool-card.drag-over {
+      outline: 2px dashed rgba(232,160,32,0.5);
+      outline-offset: -2px;
+      background: rgba(232,160,32,0.04);
+    }
+    .tool-card.dragging {
+      opacity: 0.35;
+      transform: scale(0.98);
+    }
+    .drag-handle {
+      position: absolute; top: 8px; left: 10px;
+      font-size: 0.65rem; color: var(--text-3);
+      opacity: 0; transition: opacity 150ms ease;
+      pointer-events: none; letter-spacing: 0.05em;
+      user-select: none;
+    }
+    .tool-card:hover .drag-handle { opacity: 0.5; }
+    .tool-card { position: relative; }
   </style>
 </head>
 <body>
@@ -189,15 +211,21 @@
 
   <script src="js/auth.js"></script>
   <script src="js/tools-registry.js"></script>
+  <script src="js/prefs.js"></script>
   <script src="js/nav.js"></script>
   <script>
     Nav.init(true);
+    Auth.init();
+    Prefs.init();
 
     // ── Render a tool card ───────────────────────────────────────────
-    function toolCard(tool) {
+    function toolCard(tool, gridKey) {
       const fav = isFavorite(tool.id);
       return `
-        <div class="tool-card" onclick="location.href='${tool.path}'">
+        <div class="tool-card" draggable="true"
+          data-id="${tool.id}" data-grid="${gridKey}"
+          onclick="location.href='${tool.path}'">
+          <span class="drag-handle">⠿⠿</span>
           <div class="tool-card-top">
             <div class="tool-card-cat">
               <span class="dot" data-cat="${tool.category.id}"></span>
@@ -224,35 +252,105 @@
 
     function renderAll() {
       const filter = activeFilter;
-      // Hide ledger hero card when filtering to a category that isn't general
       const heroCard = document.getElementById('ledgerHeroCard');
       if (heroCard) {
         heroCard.style.display = (filter === 'all' || filter === 'general') ? '' : 'none';
       }
-      // Ledger has its own hero card above — exclude from grids
       let tools = (filter === 'all' ? TOOLS : TOOLS.filter(t => t.category.id === filter)).filter(t => t.id !== 'ledger');
 
-      // Featured section
-      const featured = getFeaturedTools().filter(t =>
+      // Featured section — apply saved order
+      const featuredRaw = getFeaturedTools().filter(t =>
         t.id !== 'ledger' && (filter === 'all' || t.category.id === filter)
       );
+      const featured = applyOrder(featuredRaw, 'pinned');
       const featuredGrid = document.getElementById('featuredGrid');
       const featuredSection = document.getElementById('featuredSection');
       if (featured.length) {
-        featuredGrid.innerHTML = featured.map(toolCard).join('');
+        featuredGrid.innerHTML = featured.map(t => toolCard(t, 'pinned')).join('');
         document.getElementById('featuredCount').textContent = `${featured.length} tools`;
         featuredSection.classList.remove('hidden');
       } else {
         featuredSection.classList.add('hidden');
       }
 
-      // All tools grid — exclude pinned tools to avoid duplication
+      // All tools grid — apply saved order
       const pinnedIds = new Set(featured.map(t => t.id));
-      const unpinnedTools = tools.filter(t => !pinnedIds.has(t.id));
-      document.getElementById('allGrid').innerHTML = unpinnedTools.map(toolCard).join('');
+      const unpinnedRaw = tools.filter(t => !pinnedIds.has(t.id));
+      const unpinnedTools = applyOrder(unpinnedRaw, 'all');
+      document.getElementById('allGrid').innerHTML = unpinnedTools.map(t => toolCard(t, 'all')).join('');
       document.getElementById('allCount').textContent = `${unpinnedTools.length} tools`;
       document.getElementById('toolCount').textContent =
         `${TOOLS.length} tools across ${Object.keys(CATEGORIES).length} categories`;
+
+      // Attach drag listeners after render
+      initDrag();
+    }
+
+    // ── Drag and drop ────────────────────────────────────────────────
+    let _dragId   = null;
+    let _dragGrid = null;
+
+    function initDrag() {
+      document.querySelectorAll('.tool-card[draggable]').forEach(card => {
+        card.addEventListener('dragstart', onDragStart);
+        card.addEventListener('dragend',   onDragEnd);
+        card.addEventListener('dragover',  onDragOver);
+        card.addEventListener('dragleave', onDragLeave);
+        card.addEventListener('drop',      onDrop);
+      });
+    }
+
+    function onDragStart(e) {
+      _dragId   = e.currentTarget.dataset.id;
+      _dragGrid = e.currentTarget.dataset.grid;
+      e.currentTarget.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', _dragId);
+    }
+
+    function onDragEnd(e) {
+      e.currentTarget.classList.remove('dragging');
+      document.querySelectorAll('.tool-card.drag-over')
+        .forEach(c => c.classList.remove('drag-over'));
+    }
+
+    function onDragOver(e) {
+      e.preventDefault();
+      const target = e.currentTarget;
+      // Only allow drop within the same grid
+      if (target.dataset.grid !== _dragGrid) return;
+      if (target.dataset.id === _dragId) return;
+      document.querySelectorAll('.tool-card.drag-over')
+        .forEach(c => c.classList.remove('drag-over'));
+      target.classList.add('drag-over');
+    }
+
+    function onDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function onDrop(e) {
+      e.preventDefault();
+      const target = e.currentTarget;
+      target.classList.remove('drag-over');
+      const toId   = target.dataset.id;
+      const grid   = target.dataset.grid;
+      if (!_dragId || toId === _dragId || grid !== _dragGrid) return;
+
+      // Get current ordered list of ids from the DOM
+      const gridEl  = target.closest('.tool-grid');
+      const cards   = [...gridEl.querySelectorAll('.tool-card[data-id]')];
+      const ids     = cards.map(c => c.dataset.id);
+
+      // Reorder: move _dragId to position of toId
+      const fromIdx = ids.indexOf(_dragId);
+      const toIdx   = ids.indexOf(toId);
+      if (fromIdx === -1 || toIdx === -1) return;
+      ids.splice(fromIdx, 1);
+      ids.splice(toIdx, 0, _dragId);
+
+      saveOrder(grid, ids);
+      renderAll();
     }
 
     // ── Category pills ───────────────────────────────────────────────
@@ -282,7 +380,7 @@
     }
 
     renderPills();
-    renderAll();
+    Prefs.onLoaded(() => renderAll());
 
     // ── Tasks widget ─────────────────────────────────────────────────────
     let wTaskData    = [];
@@ -314,7 +412,6 @@
         wActiveLists = saved.length
           ? lists.items.filter(l => saved.includes(l.id))
           : lists.items;
-
         wActiveLists.forEach(l => { wTaskListMap[l.id] = l.title; });
 
         // Populate filter dropdown
