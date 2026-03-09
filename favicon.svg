@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background -->
+  <rect width="32" height="32" rx="7" fill="#0e0f0f"/>
+  <!-- Amber hexagon -->
+  <polygon points="16,3 27,9 27,23 16,29 5,23 5,9"
+    fill="none" stroke="#e8a020" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Inner S mark — stylized bolt/tool -->
+  <path d="M19.5 11.5 H13.5 a2 2 0 0 0 0 4 H18.5 a2 2 0 0 1 0 4 H12.5"
+    fill="none" stroke="#e8a020" stroke-width="2"
+    stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
