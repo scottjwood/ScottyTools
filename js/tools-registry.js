@@ -31,7 +31,6 @@ function getToolIcon(id) {
   return TOOL_ICONS[id] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01"/></svg>`;
 }
 
-
 const TOOLS = [
   // ── DIGITAL TOOLS ─────────────────────────────────────────────────────────
   {
@@ -94,7 +93,6 @@ const TOOLS = [
     tags: ['bronze', 'casting', 'weight', 'alloy'],
     featured: true,
   },
-
   {
     id: 'tig-reference',
     label: 'TIG Reference',
@@ -105,7 +103,7 @@ const TOOLS = [
     featured: false,
   },
 
-  // ── GENERAL ───────────────────────────────────────────────────────────────
+  // ── GENERAL (continued) ───────────────────────────────────────────────────
   {
     id: 'ledger',
     label: 'Ledger',
@@ -130,9 +128,6 @@ const TOOLS = [
 
 function getFeaturedTools() {
   const saved = getFavorites();
-  // A tool is pinned if:
-  //   - it has featured:true in the registry AND hasn't been manually unpinned, OR
-  //   - it was manually starred by the user
   const unpinned = getUnpinned();
   return TOOLS.filter(t =>
     (t.featured && !unpinned.includes(t.id)) || saved.includes(t.id)
@@ -176,13 +171,11 @@ function getFavorites() {
 function toggleFavorite(toolId) {
   const tool = TOOLS.find(t => t.id === toolId);
   if (tool && tool.featured) {
-    // For registry-featured tools: toggle between pinned and unpinned
     const unpinned = getUnpinned();
     const isCurrentlyUnpinned = unpinned.includes(toolId);
     toggleUnpinned(toolId, !isCurrentlyUnpinned);
-    return isCurrentlyUnpinned; // returns true = now pinned
+    return isCurrentlyUnpinned;
   } else {
-    // For non-featured tools: toggle user favorites
     const favs = getFavorites();
     const idx = favs.indexOf(toolId);
     if (idx === -1) favs.push(toolId); else favs.splice(idx, 1);
@@ -195,7 +188,7 @@ function toggleFavorite(toolId) {
 function isFavorite(toolId) {
   const tool = TOOLS.find(t => t.id === toolId);
   if (tool && tool.featured) {
-    return !getUnpinned().includes(toolId); // featured = pinned unless unpinned
+    return !getUnpinned().includes(toolId);
   }
   return getFavorites().includes(toolId);
 }
@@ -215,7 +208,6 @@ function saveOrder(gridKey, ids) {
 function applyOrder(tools, gridKey) {
   const order = getOrder(gridKey);
   if (!order.length) return tools;
-  // Sort by saved order, append any new tools not yet in order at the end
   const ordered = [];
   order.forEach(id => { const t = tools.find(t => t.id === id); if (t) ordered.push(t); });
   tools.forEach(t => { if (!order.includes(t.id)) ordered.push(t); });
