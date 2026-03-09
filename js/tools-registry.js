@@ -44,16 +44,6 @@ const TOOLS = [
     featured: false,
   },
 
-  {
-    id: 'tig-reference',
-    label: 'TIG Reference',
-    description: 'Dial-in settings for the PrimeWeld 225. Amps, balance, frequency, tungsten, filler rod, and cup by material and thickness.',
-    category: CATEGORIES.FOUNDRY,
-    path: 'tools/tig-reference.html',
-    tags: ['tig', 'welding', 'aluminum', 'bronze', 'steel', 'stainless', 'amps', 'tungsten', 'filler'],
-    featured: false,
-  },
-
   // ── GENERAL ───────────────────────────────────────────────────────────────
   {
     id: 'unit-converter',
