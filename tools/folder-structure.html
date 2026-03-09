@@ -340,6 +340,17 @@
     let activePresetId = 'design';
     let dragSrcIdx = null;
 
+    // Strip leading numeric prefix (e.g. "01_INCOMING" → "INCOMING")
+    function stripPrefix(name) {
+      return name.replace(/^\d+_/, '');
+    }
+
+    // Apply correct position number to a name
+    function applyPrefix(name, idx) {
+      const bare = stripPrefix(name);
+      return String(idx + 1).padStart(2, '0') + '_' + bare;
+    }
+
     // ── Persist presets in localStorage ──────────────────────────────────────
     function loadPresets() {
       try {
@@ -431,9 +442,9 @@
           ondrop="onDrop(event,${i})"
           ondragend="onDragEnd()">
           <span class="drag-handle">⠿</span>
-          <span class="folder-number">${String(i+1).padStart(2,'0')}</span>
+          <span class="folder-number">${String(i+1).padStart(2,'0')}_</span>
           <input class="folder-name-input" type="text"
-            value="${f}"
+            value="${stripPrefix(f)}"
             data-idx="${i}"
             oninput="onFolderRename(${i}, this.value)"
             onblur="onFolderRenameBlur(${i}, this.value)"/>
@@ -446,12 +457,12 @@
     }
 
     function onFolderRename(idx, val) {
-      folders[idx] = val.toUpperCase();
+      folders[idx] = stripPrefix(val.toUpperCase());
       updatePreview();
     }
 
     function onFolderRenameBlur(idx, val) {
-      folders[idx] = val.toUpperCase().trim();
+      folders[idx] = stripPrefix(val.toUpperCase().trim());
       renderFolders();
       updatePreview();
     }
@@ -480,12 +491,8 @@
       const input = document.getElementById('newFolderInput');
       const val = input.value.trim().toUpperCase();
       if (!val) return;
-      // Auto-number if it doesn't start with a number prefix
-      let name = val;
-      if (!/^\d+_/.test(name)) {
-        const num = String(folders.length + 1).padStart(2, '0');
-        name = `${num}_${name}`;
-      }
+      // Strip any manually-typed prefix — position is auto-assigned
+      const name = stripPrefix(val);
       folders.push(name);
       input.value = '';
       input.focus();
@@ -532,8 +539,8 @@
     function updatePreview() {
       const name = (document.getElementById('projectName').value.trim().toUpperCase() || 'PROJECT_NAME');
       const lines = [`<span class="preview-root">📁 ${name}/</span>`];
-      folders.forEach(f => {
-        if (f.trim()) lines.push(`<span class="preview-folder">📁 ${f}/</span>`);
+      folders.forEach((f, i) => {
+        if (f.trim()) lines.push(`<span class="preview-folder">📁 ${applyPrefix(f, i)}/</span>`);
       });
       document.getElementById('preview').innerHTML = lines.join('\n');
     }
@@ -554,16 +561,17 @@
       bat += `echo Creating project structure for %PROJECT%...\r\n`;
       bat += `\r\n`;
       bat += `mkdir "%PROJECT%"\r\n`;
-      validFolders.forEach(f => {
-        const safe = f.trim().replace(/[<>:"/\\|?*]/g, '_');
+      validFolders.forEach((f, i) => {
+        const named = applyPrefix(f, i);
+        const safe = named.trim().replace(/[<>:"/\\|?*]/g, '_');
         bat += `mkdir "%PROJECT%\\${safe}"\r\n`;
       });
       bat += `\r\n`;
       bat += `echo.\r\n`;
       bat += `echo Done! Folder structure created:\r\n`;
       bat += `echo %PROJECT%\\\r\n`;
-      validFolders.forEach(f => {
-        bat += `echo    ${f.trim()}\\\r\n`;
+      validFolders.forEach((f, i) => {
+        bat += `echo    ${applyPrefix(f, i).trim()}\\\r\n`;
       });
       bat += `\r\n`;
       bat += `pause\r\n`;
