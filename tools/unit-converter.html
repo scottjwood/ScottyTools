@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Unit Converter — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    .tool-page { padding-top: var(--nav-h); min-height: 100vh; background: var(--bg); }
+    .tool-container { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+    .tool-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); text-decoration: none; transition: color 150ms ease;
+      margin-bottom: 16px;
+    }
+    .tool-back:hover { color: var(--accent); }
+    .tool-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text-1); line-height: 1; margin-bottom: 6px;
+    }
+    .tool-title span { color: var(--accent); }
+    .tool-sub { font-size: 0.82rem; color: var(--text-3); margin-bottom: 32px; }
+    .cat-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 24px; }
+    .cat-tab {
+      display: flex; align-items: center; gap: 7px;
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-3);
+      font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em;
+      padding: 7px 14px; cursor: pointer; transition: all 150ms ease;
+    }
+    .cat-tab:hover { border-color: var(--border-hi); color: var(--text-2); }
+    .cat-tab.active { background: rgba(232,160,32,0.1); border-color: rgba(232,160,32,0.35); color: var(--accent); }
+    .input-area {
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px; margin-bottom: 16px;
+      display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;
+    }
+    .input-field { flex: 1; min-width: 180px; }
+    .input-label {
+      font-size: 0.65rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-3); margin-bottom: 6px;
+    }
+    .value-input {
+      background: #1a1c1e; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1);
+      font-family: 'DM Mono', monospace; font-size: 1.4rem;
+      padding: 10px 14px; outline: none; width: 100%;
+      transition: border-color 150ms ease; -webkit-appearance: none;
+    }
+    .value-input:focus { border-color: var(--accent); }
+    .value-input::placeholder { color: var(--text-3); font-size: 1rem; }
+    .unit-select-wrap { flex: 0 0 200px; }
+    .unit-select {
+      background: #1a1c1e; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1);
+      font-family: 'DM Mono', monospace; font-size: 0.85rem;
+      padding: 10px 12px; outline: none; width: 100%;
+      cursor: pointer; transition: border-color 150ms ease; -webkit-appearance: none;
+    }
+    .unit-select:focus { border-color: var(--accent); }
+    .results-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1px; background: var(--border);
+      border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    }
+    .result-card {
+      background: #131516; padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 4px;
+      transition: background 150ms ease; cursor: pointer; position: relative;
+    }
+    .result-card:hover { background: #1a1c1e; }
+    .result-card.source-unit { background: rgba(232,160,32,0.06); border-left: 2px solid var(--accent); }
+    .result-card.source-unit:hover { background: rgba(232,160,32,0.1); }
+    .result-section-label {
+      grid-column: 1 / -1; background: #0d0f10;
+      padding: 8px 18px; font-size: 0.62rem; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--text-3);
+    }
+    .result-unit-name { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+    .result-unit-abbr { font-size: 0.6rem; color: var(--text-3); opacity: 0.6; margin-left: 4px; }
+    .result-value { font-family: 'DM Mono', monospace; font-size: 1.1rem; font-weight: 500; color: var(--text-1); word-break: break-all; }
+    .result-value.large { font-size: 1.3rem; color: var(--accent); }
+    .result-value.zero { color: var(--text-3); }
+    .result-copy-hint {
+      position: absolute; top: 8px; right: 10px;
+      font-size: 0.6rem; color: var(--text-3);
+      opacity: 0; transition: opacity 150ms ease;
+    }
+    .result-card:hover .result-copy-hint { opacity: 1; }
+    .result-card.copied .result-copy-hint { opacity: 1; color: #4ade80; }
+    .empty-state {
+      text-align: center; padding: 60px 20px;
+      color: var(--text-3); font-size: 0.85rem;
+      background: #131516; border: 1px solid var(--border); border-radius: 10px;
+    }
+    .empty-icon { font-size: 2rem; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<div class="tool-page">
+  <div class="tool-container">
+    <a href="../index.html" class="tool-back">← ScottyTools</a>
+    <div class="tool-title">Unit <span>Converter</span></div>
+    <div class="tool-sub">Type a value — see all conversions instantly. Click any result to copy.</div>
+    <div class="cat-tabs" id="catTabs"></div>
+    <div class="input-area">
+      <div class="input-field">
+        <div class="input-label">Value</div>
+        <input type="number" class="value-input" id="inputValue"
+          placeholder="Enter a number…" oninput="convert()" step="any"/>
+      </div>
+      <div class="unit-select-wrap">
+        <div class="input-label">From Unit</div>
+        <select class="unit-select" id="fromUnit" onchange="convert()"></select>
+      </div>
+    </div>
+    <div id="resultsContainer"></div>
+  </div>
+</div>
+<script src="../js/auth.js"></script>
+<script src="../js/tools-registry.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.init();
+
+const CATEGORIES = [
+  {
+    id: 'length', label: 'Length', icon: '↔',
+    groups: [
+      { label: 'Imperial', units: [
+        { id: 'thou', name: 'Thou',       abbr: 'thou', toBase: v => v * 0.0000254 },
+        { id: 'in',   name: 'Inch',       abbr: 'in',   toBase: v => v * 0.0254 },
+        { id: 'ft',   name: 'Foot',       abbr: 'ft',   toBase: v => v * 0.3048 },
+        { id: 'yd',   name: 'Yard',       abbr: 'yd',   toBase: v => v * 0.9144 },
+        { id: 'mi',   name: 'Mile',       abbr: 'mi',   toBase: v => v * 1609.344 },
+      ]},
+      { label: 'Metric', units: [
+        { id: 'mm',   name: 'Millimeter', abbr: 'mm',   toBase: v => v * 0.001 },
+        { id: 'cm',   name: 'Centimeter', abbr: 'cm',   toBase: v => v * 0.01 },
+        { id: 'm',    name: 'Meter',      abbr: 'm',    toBase: v => v * 1 },
+        { id: 'km',   name: 'Kilometer',  abbr: 'km',   toBase: v => v * 1000 },
+      ]},
+    ],
+  },
+  {
+    id: 'weight', label: 'Weight', icon: '⚖',
+    groups: [
+      { label: 'Imperial / Avoirdupois', units: [
+        { id: 'oz',     name: 'Ounce',      abbr: 'oz',    toBase: v => v * 0.028349523 },
+        { id: 'lb',     name: 'Pound',      abbr: 'lb',    toBase: v => v * 0.45359237 },
+        { id: 'ton_us', name: 'US Ton',     abbr: 'ton',   toBase: v => v * 907.18474 },
+      ]},
+      { label: 'Metric', units: [
+        { id: 'mg',     name: 'Milligram',  abbr: 'mg',    toBase: v => v * 0.000001 },
+        { id: 'g',      name: 'Gram',       abbr: 'g',     toBase: v => v * 0.001 },
+        { id: 'kg',     name: 'Kilogram',   abbr: 'kg',    toBase: v => v * 1 },
+        { id: 'tonne',  name: 'Metric Ton', abbr: 't',     toBase: v => v * 1000 },
+      ]},
+      { label: 'Troy (Precious Metals & Casting)', units: [
+        { id: 'grain',  name: 'Grain',        abbr: 'gr',    toBase: v => v * 0.00006479891 },
+        { id: 'dwt',    name: 'Pennyweight',  abbr: 'dwt',   toBase: v => v * 0.00155517384 },
+        { id: 'toz',    name: 'Troy Ounce',   abbr: 'tr oz', toBase: v => v * 0.0311034768 },
+        { id: 'tlb',    name: 'Troy Pound',   abbr: 'tr lb', toBase: v => v * 0.3732417216 },
+      ]},
+    ],
+  },
+  {
+    id: 'volume', label: 'Volume', icon: '◉',
+    groups: [
+      { label: 'Imperial / US', units: [
+        { id: 'tsp',   name: 'Teaspoon',    abbr: 'tsp',   toBase: v => v * 0.00000492892 },
+        { id: 'tbsp',  name: 'Tablespoon',  abbr: 'tbsp',  toBase: v => v * 0.0000147868 },
+        { id: 'fl_oz', name: 'Fluid Ounce', abbr: 'fl oz', toBase: v => v * 0.0000295735 },
+        { id: 'cup',   name: 'Cup',         abbr: 'cup',   toBase: v => v * 0.000236588 },
+        { id: 'pt',    name: 'Pint',        abbr: 'pt',    toBase: v => v * 0.000473176 },
+        { id: 'qt',    name: 'Quart',       abbr: 'qt',    toBase: v => v * 0.000946353 },
+        { id: 'gal',   name: 'Gallon',      abbr: 'gal',   toBase: v => v * 0.00378541 },
+        { id: 'in3',   name: 'Cubic Inch',  abbr: 'in³',   toBase: v => v * 0.0000163871 },
+        { id: 'ft3',   name: 'Cubic Foot',  abbr: 'ft³',   toBase: v => v * 0.0283168 },
+      ]},
+      { label: 'Metric', units: [
+        { id: 'ml',    name: 'Milliliter',  abbr: 'ml',    toBase: v => v * 0.000001 },
+        { id: 'cl',    name: 'Centiliter',  abbr: 'cl',    toBase: v => v * 0.00001 },
+        { id: 'dl',    name: 'Deciliter',   abbr: 'dl',    toBase: v => v * 0.0001 },
+        { id: 'l',     name: 'Liter',       abbr: 'L',     toBase: v => v * 0.001 },
+        { id: 'cm3',   name: 'Cubic Cm',    abbr: 'cm³',   toBase: v => v * 0.000001 },
+        { id: 'm3',    name: 'Cubic Meter', abbr: 'm³',    toBase: v => v * 1 },
+      ]},
+    ],
+  },
+  {
+    id: 'temp', label: 'Temperature', icon: '◈',
+    groups: [
+      { label: 'Temperature', units: [
+        { id: 'c', name: 'Celsius',    abbr: '°C', toBase: v => v,                   fromBase: v => v },
+        { id: 'f', name: 'Fahrenheit', abbr: '°F', toBase: v => (v-32)*5/9,          fromBase: v => v*9/5+32 },
+        { id: 'k', name: 'Kelvin',     abbr: 'K',  toBase: v => v-273.15,            fromBase: v => v+273.15 },
+        { id: 'r', name: 'Rankine',    abbr: '°R', toBase: v => (v-491.67)*5/9,      fromBase: v => (v+273.15)*9/5 },
+      ]},
+    ],
+  },
+  {
+    id: 'area', label: 'Area', icon: '▣',
+    groups: [
+      { label: 'Imperial', units: [
+        { id: 'in2',  name: 'Sq Inch',       abbr: 'in²',  toBase: v => v * 0.00064516 },
+        { id: 'ft2',  name: 'Sq Foot',       abbr: 'ft²',  toBase: v => v * 0.092903 },
+        { id: 'yd2',  name: 'Sq Yard',       abbr: 'yd²',  toBase: v => v * 0.836127 },
+        { id: 'ac',   name: 'Acre',          abbr: 'ac',   toBase: v => v * 4046.86 },
+        { id: 'mi2',  name: 'Sq Mile',       abbr: 'mi²',  toBase: v => v * 2589988 },
+      ]},
+      { label: 'Metric', units: [
+        { id: 'mm2',  name: 'Sq Millimeter', abbr: 'mm²',  toBase: v => v * 0.000001 },
+        { id: 'cm2',  name: 'Sq Centimeter', abbr: 'cm²',  toBase: v => v * 0.0001 },
+        { id: 'm2',   name: 'Sq Meter',      abbr: 'm²',   toBase: v => v * 1 },
+        { id: 'ha',   name: 'Hectare',       abbr: 'ha',   toBase: v => v * 10000 },
+        { id: 'km2',  name: 'Sq Kilometer',  abbr: 'km²',  toBase: v => v * 1000000 },
+      ]},
+    ],
+  },
+];
+
+let activeCategory = CATEGORIES[0];
+const savedCat = localStorage.getItem('uc_category');
+if (savedCat) { const f = CATEGORIES.find(c => c.id === savedCat); if (f) activeCategory = f; }
+
+function init() {
+  renderCategoryTabs();
+  populateFromUnit();
+  renderEmptyState();
+}
+
+function renderCategoryTabs() {
+  document.getElementById('catTabs').innerHTML = CATEGORIES.map(cat => `
+    <button class="cat-tab ${cat.id === activeCategory.id ? 'active' : ''}" onclick="setCategory('${cat.id}')">
+      <span>${cat.icon}</span>${cat.label}
+    </button>`).join('');
+}
+
+function setCategory(id) {
+  activeCategory = CATEGORIES.find(c => c.id === id);
+  localStorage.setItem('uc_category', id);
+  renderCategoryTabs();
+  populateFromUnit();
+  convert();
+}
+
+function populateFromUnit() {
+  const sel = document.getElementById('fromUnit');
+  sel.innerHTML = activeCategory.groups.map(g =>
+    `<optgroup label="${g.label}">` +
+    g.units.map(u => `<option value="${u.id}">${u.name} (${u.abbr})</option>`).join('') +
+    `</optgroup>`
+  ).join('');
+  const savedUnit = localStorage.getItem('uc_unit_' + activeCategory.id);
+  if (savedUnit && sel.querySelector(`option[value="${savedUnit}"]`)) sel.value = savedUnit;
+}
+
+function getAllUnits() { return activeCategory.groups.flatMap(g => g.units); }
+function findUnit(id)  { return getAllUnits().find(u => u.id === id); }
+
+function convertValue(value, fromUnit, toUnit) {
+  if (fromUnit.id === toUnit.id) return value;
+  const baseValue = fromUnit.toBase(value);
+  if (toUnit.fromBase) return toUnit.fromBase(baseValue);
+  const factor = toUnit.toBase(1);
+  return baseValue / factor;
+}
+
+function fmtNumber(n) {
+  if (!isFinite(n)) return '—';
+  const abs = Math.abs(n);
+  if (abs === 0) return '0';
+  if (abs >= 1e15 || abs < 0.000001) return n.toExponential(4);
+  if (abs < 0.001)  return n.toPrecision(4);
+  if (abs < 1)      return parseFloat(n.toFixed(6)).toString();
+  if (abs < 1000)   return parseFloat(n.toFixed(4)).toString();
+  if (abs < 1000000)return parseFloat(n.toFixed(2)).toString();
+  return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+function convert() {
+  const raw    = document.getElementById('inputValue').value;
+  const fromId = document.getElementById('fromUnit').value;
+  const from   = findUnit(fromId);
+  localStorage.setItem('uc_unit_' + activeCategory.id, fromId);
+  if (raw === '' || !from || isNaN(parseFloat(raw))) { renderEmptyState(); return; }
+  renderResults(parseFloat(raw), from);
+}
+
+function renderEmptyState() {
+  document.getElementById('resultsContainer').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">${activeCategory.icon}</div>
+      Enter a value above to see all ${activeCategory.label.toLowerCase()} conversions
+    </div>`;
+}
+
+function renderResults(value, fromUnit) {
+  let html = '';
+  activeCategory.groups.forEach(group => {
+    html += `<div class="result-section-label">${group.label}</div>`;
+    group.units.forEach(unit => {
+      const converted = convertValue(value, fromUnit, unit);
+      const formatted = fmtNumber(converted);
+      const isSource  = unit.id === fromUnit.id;
+      html += `
+        <div class="result-card ${isSource ? 'source-unit' : ''}"
+          onclick="copyResult('${formatted}', this)" title="Click to copy">
+          <span class="result-copy-hint">copy</span>
+          <div class="result-unit-name">${unit.name}<span class="result-unit-abbr">${unit.abbr}</span></div>
+          <div class="result-value ${isSource ? 'large' : ''} ${converted === 0 ? 'zero' : ''}">${formatted}</div>
+        </div>`;
+    });
+  });
+  document.getElementById('resultsContainer').innerHTML = `<div class="results-grid">${html}</div>`;
+}
+
+function copyResult(value, card) {
+  navigator.clipboard.writeText(value).then(() => {
+    const hint = card.querySelector('.result-copy-hint');
+    hint.textContent = '✓ copied';
+    card.classList.add('copied');
+    setTimeout(() => { hint.textContent = 'copy'; card.classList.remove('copied'); }, 1500);
+  });
+}
+
+init();
+</script>
+</body>
+</html>

@@ -26,6 +26,17 @@ const TOOLS = [
     featured: false,
   },
 
+  // ── GENERAL ───────────────────────────────────────────────────────────────
+  {
+    id: 'unit-converter',
+    label: 'Unit Converter',
+    description: 'Convert length, weight, volume, temperature, and area. Imperial, metric, and troy units. Type a value to see all conversions at once.',
+    category: CATEGORIES.GENERAL,
+    path: 'tools/unit-converter.html',
+    tags: ['unit', 'convert', 'length', 'weight', 'volume', 'temperature', 'area', 'metric', 'imperial', 'troy'],
+    featured: false,
+  },
+
   // ── BRONZE FOUNDRY ────────────────────────────────────────────────────────
   {
     id: 'flask-investment',
