@@ -32,25 +32,43 @@ const Auth = (() => {
   ].join(' ');
 
   // ── Storage keys ─────────────────────────────────────────────────────────
-  const KEY_TOKEN   = 'st_google_token';
-  const KEY_EXPIRY  = 'st_google_expiry';
-  const KEY_USER    = 'st_google_user';
+  const KEY_TOKEN        = 'st_google_token';
+  const KEY_EXPIRY       = 'st_google_expiry';       // access token expiry (1hr)
+  const KEY_USER         = 'st_google_user';
+  const KEY_SESSION_SEEN = 'st_session_seen';         // last successful sign-in (30d)
+
+  const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
   // ── Internal state ────────────────────────────────────────────────────────
-  let _tokenClient = null;
+  let _tokenClient    = null;
   let _readyCallbacks = [];
-  let _user = null;
-  let _token = null;
+  let _user           = null;
+  let _token          = null;
+  let _refreshTimer   = null;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  /** Returns true if the user has signed in within the last 30 days */
+  function sessionValid() {
+    try {
+      const seen = parseInt(localStorage.getItem(KEY_SESSION_SEEN) || '0');
+      return seen > 0 && (Date.now() - seen) < SESSION_DURATION_MS;
+    } catch { return false; }
+  }
+
+  /** Load access token from storage if it hasn't expired yet */
   function loadSession() {
     try {
       const expiry = parseInt(localStorage.getItem(KEY_EXPIRY) || '0');
-      if (Date.now() < expiry) {
+      _user = JSON.parse(localStorage.getItem(KEY_USER) || 'null');
+      if (_user && Date.now() < expiry) {
         _token = localStorage.getItem(KEY_TOKEN);
-        _user  = JSON.parse(localStorage.getItem(KEY_USER) || 'null');
-        return !!(_token && _user);
+        return true;
       }
+      // Token expired but user may still be within 30-day window
+      // — token will be refreshed silently in _initGIS
+      _token = null;
+      return !!_user; // user known, token needs refresh
     } catch {}
     clearSession();
     return false;
@@ -59,17 +77,37 @@ const Auth = (() => {
   function saveSession(token, expiresIn, user) {
     _token = token;
     _user  = user;
-    localStorage.setItem(KEY_TOKEN,  token);
-    localStorage.setItem(KEY_EXPIRY, String(Date.now() + (expiresIn - 60) * 1000));
-    localStorage.setItem(KEY_USER,   JSON.stringify(user));
+    const expiry = Date.now() + (expiresIn - 60) * 1000;
+    localStorage.setItem(KEY_TOKEN,        token);
+    localStorage.setItem(KEY_EXPIRY,       String(expiry));
+    localStorage.setItem(KEY_USER,         JSON.stringify(user));
+    localStorage.setItem(KEY_SESSION_SEEN, String(Date.now()));
+    // Schedule silent refresh 2 min before expiry
+    scheduleRefresh(expiry);
   }
 
   function clearSession() {
     _token = null;
     _user  = null;
+    clearTimeout(_refreshTimer);
     localStorage.removeItem(KEY_TOKEN);
     localStorage.removeItem(KEY_EXPIRY);
     localStorage.removeItem(KEY_USER);
+    localStorage.removeItem(KEY_SESSION_SEEN);
+  }
+
+  /** Silently refresh the access token without any UI prompt */
+  function silentRefresh() {
+    if (!_tokenClient) return;
+    _tokenClient.requestAccessToken({ prompt: '' });
+  }
+
+  function scheduleRefresh(expiryMs) {
+    clearTimeout(_refreshTimer);
+    const msUntilRefresh = expiryMs - Date.now() - 2 * 60 * 1000; // 2 min early
+    if (msUntilRefresh > 0) {
+      _refreshTimer = setTimeout(silentRefresh, msUntilRefresh);
+    }
   }
 
   async function fetchUserInfo(token) {
@@ -104,8 +142,7 @@ const Auth = (() => {
     if (window.google && _token) {
       google.accounts.oauth2.revoke(_token, () => {});
     }
-    clearSession();
-    // Redirect to index from wherever we are
+    clearSession(); // clears KEY_SESSION_SEEN too — forces full sign-in next time
     const depth = window.location.pathname.split('/').filter(Boolean).length;
     const prefix = depth > 1 ? '../' : '';
     window.location.href = prefix + 'index.html';
@@ -147,12 +184,28 @@ const Auth = (() => {
       scope: SCOPES,
       callback: async (response) => {
         if (response.error) {
-          console.error('Auth error:', response.error);
-          clearSession();
+          // Silent refresh failed (e.g. cookies blocked) — only clear if
+          // this was an explicit sign-in attempt, not a background refresh
+          if (response.error !== 'interaction_required' &&
+              response.error !== 'access_denied') {
+            console.warn('Auth silent refresh issue:', response.error);
+          } else {
+            clearSession();
+          }
           fireReady();
           return;
         }
-        // Fetch user profile to verify allowed email
+
+        // For silent refreshes we already have _user — skip fetching profile
+        if (_user && isAllowed(_user.email)) {
+          saveSession(response.access_token, response.expires_in, _user);
+          // Only fire ready on first load, not on background refreshes
+          if (_readyCallbacks !== null) fireReady();
+          if (onSignIn) onSignIn(_user);
+          return;
+        }
+
+        // First sign-in — fetch and verify user profile
         const userInfo = await fetchUserInfo(response.access_token);
         if (!isAllowed(userInfo.email)) {
           alert(`Access denied: ${userInfo.email} is not authorized to use ScottyTools.`);
@@ -171,11 +224,21 @@ const Auth = (() => {
       },
     });
 
-    // If we have a valid cached session, fire ready immediately
-    if (loadSession()) {
+    const hasSession = loadSession();
+
+    if (hasSession && _token) {
+      // Token still valid — schedule refresh and fire ready
+      const expiry = parseInt(localStorage.getItem(KEY_EXPIRY) || '0');
+      scheduleRefresh(expiry);
       fireReady();
+    } else if (hasSession && _user && sessionValid()) {
+      // User known, token expired, but within 30-day window — silent refresh
+      // Fire ready now with user (token will arrive shortly via callback)
+      fireReady();
+      silentRefresh();
     } else {
-      // No valid session — fire ready with null (page decides what to do)
+      // No session or session older than 30 days
+      clearSession();
       fireReady();
     }
   }
@@ -188,7 +251,8 @@ const Auth = (() => {
       alert('Auth not initialized yet. Please wait a moment and try again.');
       return;
     }
-    _tokenClient.requestAccessToken({ prompt: 'consent' });
+    // 'select_account' shows account picker but skips consent if already granted
+    _tokenClient.requestAccessToken({ prompt: 'select_account' });
   }
 
   /**
