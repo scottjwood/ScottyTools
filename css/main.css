@@ -237,10 +237,10 @@ input, select, textarea { font-family: var(--mono); }
 .tool-card-cat .dot {
   width: 5px; height: 5px; border-radius: 50%;
 }
-{PLACEHOLDER}
+.tool-card-label {
   font-family: var(--cond);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.5rem;
   letter-spacing: 0.02em;
 }
 .tool-card-desc {
