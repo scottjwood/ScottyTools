@@ -10,7 +10,7 @@
 
 const CATEGORIES = {
   DIGITAL:  { id: 'digital',  label: 'Digital Tools',  icon: '◈' },
-  FOUNDRY:  { id: 'foundry',  label: 'Bronze Foundry', icon: '⬟' },
+  FOUNDRY:  { id: 'foundry',  label: 'Foundry', icon: '⬟' },
   GENERAL:  { id: 'general',  label: 'General',        icon: '◇' },
 };
 
