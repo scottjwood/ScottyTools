@@ -69,6 +69,16 @@ const TOOLS = [
   },
 
   // ── GENERAL ───────────────────────────────────────────────────────────────
+  // ── GENERAL ───────────────────────────────────────────────────────────────
+  {
+    id: 'ledger',
+    label: 'Ledger',
+    description: 'Time tracking and invoice prep. Log work entries by client, generate invoice text, and mark as invoiced.',
+    category: CATEGORIES.GENERAL,
+    path: 'tools/ledger.html',
+    tags: ['time', 'invoice', 'billing', 'hours', 'client', 'work'],
+    featured: true,
+  },
   {
     id: 'folder-structure',
     label: 'Folder Structure Generator',
