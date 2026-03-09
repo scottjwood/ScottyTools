@@ -1,8 +1,8 @@
 [build]
-  publish = "."
+  base    = "scottytools"
+  publish = "scottytools"
 
 # Edge function — secure proxy for Ledger API calls
-# SCRIPT_URL and API_TOKEN are read server-side; never sent to browser
 [[edge_functions]]
   path     = "/.netlify/edge-functions/ledger-api"
   function = "ledger-api"
