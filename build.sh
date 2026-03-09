@@ -16,7 +16,6 @@ cp netlify/edge-functions/*.js dist/netlify/edge-functions/
 # Favicons
 cp favicon.svg dist/
 cp favicon-32.png dist/
-cp favicon-16.png dist/
 cp apple-touch-icon.png dist/
 
 # Debug — show whether env vars are present (not their values)
