@@ -83,8 +83,8 @@
               <span data-cat="${tool.category.id}">${tool.category.label}</span>
             </div>
             <button class="tool-card-fav ${fav ? 'active' : ''}"
-              onclick="event.stopPropagation(); toggleFavUI('${tool.id}', this)"
-              title="Pin to top">★</button>
+              onclick="event.stopPropagation(); toggleFavUI('${tool.id}')"
+              title="${fav ? 'Unpin from top' : 'Pin to top'}">★</button>
           </div>
           <div class="tool-card-label">${tool.label}</div>
           <div class="tool-card-desc">${tool.description}</div>
@@ -93,9 +93,8 @@
     }
 
     // ── Favorite toggle UI ───────────────────────────────────────────
-    function toggleFavUI(id, btn) {
-      const isNowFav = toggleFavorite(id);
-      btn.classList.toggle('active', isNowFav);
+    function toggleFavUI(id) {
+      toggleFavorite(id);
       renderAll();
     }
 

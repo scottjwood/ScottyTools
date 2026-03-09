@@ -71,9 +71,26 @@ const TOOLS = [
 
 function getFeaturedTools() {
   const saved = getFavorites();
-  const featured = TOOLS.filter(t => t.featured);
-  const favorites = TOOLS.filter(t => saved.includes(t.id) && !t.featured);
-  return [...favorites, ...featured];
+  // A tool is pinned if:
+  //   - it has featured:true in the registry AND hasn't been manually unpinned, OR
+  //   - it was manually starred by the user
+  const unpinned = getUnpinned();
+  return TOOLS.filter(t =>
+    (t.featured && !unpinned.includes(t.id)) || saved.includes(t.id)
+  );
+}
+
+function getUnpinned() {
+  try { return JSON.parse(localStorage.getItem('st_unpinned') || '[]'); }
+  catch { return []; }
+}
+
+function toggleUnpinned(toolId, forceUnpin) {
+  const list = getUnpinned();
+  const idx  = list.indexOf(toolId);
+  if (forceUnpin && idx === -1) list.push(toolId);
+  else if (!forceUnpin && idx !== -1) list.splice(idx, 1);
+  localStorage.setItem('st_unpinned', JSON.stringify(list));
 }
 
 function getToolsByCategory(categoryId) {
@@ -97,13 +114,27 @@ function getFavorites() {
 }
 
 function toggleFavorite(toolId) {
-  const favs = getFavorites();
-  const idx = favs.indexOf(toolId);
-  if (idx === -1) favs.push(toolId); else favs.splice(idx, 1);
-  localStorage.setItem('st_favorites', JSON.stringify(favs));
-  return favs.includes(toolId);
+  const tool = TOOLS.find(t => t.id === toolId);
+  if (tool && tool.featured) {
+    // For registry-featured tools: toggle between pinned and unpinned
+    const unpinned = getUnpinned();
+    const isCurrentlyUnpinned = unpinned.includes(toolId);
+    toggleUnpinned(toolId, !isCurrentlyUnpinned);
+    return isCurrentlyUnpinned; // returns true = now pinned
+  } else {
+    // For non-featured tools: toggle user favorites
+    const favs = getFavorites();
+    const idx = favs.indexOf(toolId);
+    if (idx === -1) favs.push(toolId); else favs.splice(idx, 1);
+    localStorage.setItem('st_favorites', JSON.stringify(favs));
+    return favs.includes(toolId);
+  }
 }
 
 function isFavorite(toolId) {
+  const tool = TOOLS.find(t => t.id === toolId);
+  if (tool && tool.featured) {
+    return !getUnpinned().includes(toolId); // featured = pinned unless unpinned
+  }
   return getFavorites().includes(toolId);
 }
