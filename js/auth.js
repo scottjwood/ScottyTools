@@ -80,7 +80,7 @@ const Auth = (() => {
   }
 
   function isAllowed(email) {
-    if (!ALLOWED_EMAIL || ALLOWED_EMAIL === '%%ALLOWED_EMAIL%%') return true; // dev fallback
+    if (!ALLOWED_EMAIL || ALLOWED_EMAIL.length < 3) return true; // dev fallback
     return email.toLowerCase() === ALLOWED_EMAIL.toLowerCase();
   }
 
@@ -135,7 +135,7 @@ const Auth = (() => {
   }
 
   function _initGIS(onSignIn) {
-    if (!CLIENT_ID || CLIENT_ID === '%%GOOGLE_CLIENT_ID%%') {
+    if (!CLIENT_ID || CLIENT_ID.length < 10) {
       console.warn('Auth: CLIENT_ID not configured.');
       _readyCallbacks = null;
       fireReady();
