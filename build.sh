@@ -1,6 +1,5 @@
 #!/bin/bash
 # ScottyTools build script
-# Injects environment variables into auth.js
 set -e
 
 echo "Building ScottyTools..."
@@ -14,6 +13,12 @@ cp js/*.js    dist/js/
 cp tools/*.html dist/tools/
 cp netlify/edge-functions/*.js dist/netlify/edge-functions/
 [ -f README.md ] && cp README.md dist/
+
+# Debug — show whether env vars are present (not their values)
+echo "GOOGLE_CLIENT_ID set: $([ -n "$GOOGLE_CLIENT_ID" ] && echo YES || echo NO)"
+echo "ALLOWED_EMAIL set:    $([ -n "$ALLOWED_EMAIL" ] && echo YES || echo NO)"
+echo "SCRIPT_URL set:       $([ -n "$SCRIPT_URL" ] && echo YES || echo NO)"
+echo "API_TOKEN set:        $([ -n "$API_TOKEN" ] && echo YES || echo NO)"
 
 # Inject Google OAuth credentials into auth.js
 sed -i "s|%%GOOGLE_CLIENT_ID%%|${GOOGLE_CLIENT_ID:-}|g" dist/js/auth.js
