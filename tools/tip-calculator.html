@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tip Calculator — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    .tool-page { padding-top: var(--nav-h); min-height: 100vh; background: var(--bg); }
+    .tool-container { max-width: 560px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    .tool-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); text-decoration: none; transition: color 150ms ease;
+      margin-bottom: 16px;
+    }
+    .tool-back:hover { color: var(--accent); }
+    .tool-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text-1); line-height: 1; margin-bottom: 6px;
+    }
+    .tool-title span { color: var(--accent); }
+    .tool-sub { font-size: 0.82rem; color: var(--text-3); margin-bottom: 32px; }
+
+    /* ── Panel ───────────────────────────────────────────────── */
+    .panel {
+      background: #131516;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .panel-body { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+
+    /* ── Field ───────────────────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field-label {
+      font-size: 0.65rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-3);
+    }
+
+    /* ── Bill input ──────────────────────────────────────────── */
+    .bill-wrap {
+      position: relative;
+    }
+    .bill-prefix {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      font-family: 'DM Mono', monospace; font-size: 1.3rem;
+      color: var(--text-3); pointer-events: none;
+    }
+    .bill-input {
+      background: #1a1c1e;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-1);
+      font-family: 'DM Mono', monospace;
+      font-size: 1.6rem;
+      padding: 12px 14px 12px 30px;
+      outline: none; width: 100%;
+      transition: border-color 150ms ease;
+      -webkit-appearance: none;
+    }
+    .bill-input:focus { border-color: var(--accent); }
+    .bill-input::placeholder { color: var(--text-3); }
+
+    /* ── Tip preset buttons ──────────────────────────────────── */
+    .tip-presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .tip-btn {
+      background: #1a1c1e;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-2);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 6px;
+      cursor: pointer;
+      transition: all 150ms ease;
+      text-align: center;
+    }
+    .tip-btn:hover { border-color: var(--border-hi); color: var(--text-1); }
+    .tip-btn.active {
+      background: rgba(232,160,32,0.12);
+      border-color: rgba(232,160,32,0.4);
+      color: var(--accent);
+    }
+    .tip-custom-wrap { position: relative; }
+    .tip-custom-input {
+      background: #1a1c1e;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-1);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 22px 10px 10px;
+      outline: none; width: 100%;
+      transition: border-color 150ms ease;
+      -webkit-appearance: none;
+      text-align: center;
+    }
+    .tip-custom-input:focus { border-color: var(--accent); }
+    .tip-custom-input::placeholder { color: var(--text-3); font-size: 0.75rem; }
+    .tip-custom-suffix {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      font-size: 0.75rem; color: var(--text-3); pointer-events: none;
+    }
+
+    /* ── People counter ──────────────────────────────────────── */
+    .people-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .people-btn {
+      width: 36px; height: 36px;
+      background: #1a1c1e; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1);
+      font-size: 1.2rem; font-family: 'DM Mono', monospace;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 150ms ease; flex-shrink: 0;
+    }
+    .people-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .people-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .people-count {
+      font-family: 'DM Mono', monospace; font-size: 1.2rem;
+      color: var(--text-1); min-width: 28px; text-align: center;
+    }
+    .people-label { font-size: 0.78rem; color: var(--text-3); }
+
+    /* ── Results ─────────────────────────────────────────────── */
+    .results-panel {
+      background: #0d0f10;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .result-row {
+      display: flex; justify-content: space-between;
+      align-items: baseline; padding: 14px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-row.total {
+      background: rgba(232,160,32,0.05);
+      border-top: 1px solid rgba(232,160,32,0.15);
+      padding: 18px 20px;
+    }
+    .result-row.per-person {
+      background: rgba(255,255,255,0.02);
+    }
+    .result-key { font-size: 0.78rem; color: var(--text-3); }
+    .result-key strong { color: var(--text-2); font-weight: 500; }
+    .result-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 1rem; color: var(--text-1);
+    }
+    .result-val.accent { color: var(--accent); font-size: 1.3rem; font-weight: 500; }
+    .result-val.dim { color: var(--text-3); }
+
+    /* ── Round up toggle ─────────────────────────────────────── */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .toggle-label { font-size: 0.78rem; color: var(--text-3); }
+    .toggle-switch {
+      position: relative; width: 36px; height: 20px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { display: none; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: #2a2e2e; border-radius: 20px;
+      cursor: pointer; transition: background 150ms ease;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--text-3); top: 3px; left: 3px;
+      transition: all 150ms ease;
+    }
+    input:checked + .toggle-track { background: rgba(232,160,32,0.3); }
+    input:checked + .toggle-track::after { background: var(--accent); left: 19px; }
+
+    /* ── Empty state ─────────────────────────────────────────── */
+    .empty-results {
+      padding: 32px 20px; text-align: center;
+      color: var(--text-3); font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+
+<div class="tool-page">
+  <div class="tool-container">
+    <a href="../index.html" class="tool-back">← ScottyTools</a>
+    <div class="tool-title">Tip <span>Calculator</span></div>
+    <div class="tool-sub">Split the bill, pick a tip — done.</div>
+
+    <!-- Inputs -->
+    <div class="panel">
+      <div class="panel-body">
+
+        <!-- Bill -->
+        <div class="field">
+          <div class="field-label">Bill Amount</div>
+          <div class="bill-wrap">
+            <span class="bill-prefix">$</span>
+            <input class="bill-input" type="number" id="billInput"
+              placeholder="0.00" min="0" step="0.01" oninput="calculate()"/>
+          </div>
+        </div>
+
+        <!-- Tip % -->
+        <div class="field">
+          <div class="field-label">Tip</div>
+          <div class="tip-presets">
+            <button class="tip-btn" data-tip="15" onclick="selectTip(15, this)">15%</button>
+            <button class="tip-btn" data-tip="18" onclick="selectTip(18, this)">18%</button>
+            <button class="tip-btn active" data-tip="20" onclick="selectTip(20, this)">20%</button>
+            <button class="tip-btn" data-tip="25" onclick="selectTip(25, this)">25%</button>
+            <div class="tip-custom-wrap">
+              <input class="tip-custom-input" type="number" id="customTip"
+                placeholder="%" min="0" max="100" oninput="selectCustomTip(this)"/>
+              <span class="tip-custom-suffix">%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- People -->
+        <div class="field">
+          <div class="field-label">Split Between</div>
+          <div class="people-row">
+            <button class="people-btn" id="btnMinus" onclick="changePeople(-1)">−</button>
+            <span class="people-count" id="peopleCount">1</span>
+            <button class="people-btn" onclick="changePeople(1)">+</button>
+            <span class="people-label" id="peopleLabel">person</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-panel" id="resultsPanel">
+      <div class="empty-results">Enter a bill amount to see the breakdown</div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/tools-registry.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.init();
+
+let tipPct  = 20;
+let people  = 1;
+let roundUp = false;
+
+function selectTip(pct, btn) {
+  tipPct = pct;
+  document.getElementById('customTip').value = '';
+  document.querySelectorAll('.tip-btn[data-tip]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  calculate();
+}
+
+function selectCustomTip(input) {
+  const v = parseFloat(input.value);
+  document.querySelectorAll('.tip-btn[data-tip]').forEach(b => b.classList.remove('active'));
+  tipPct = isNaN(v) ? 0 : v;
+  calculate();
+}
+
+function changePeople(delta) {
+  people = Math.max(1, people + delta);
+  document.getElementById('peopleCount').textContent = people;
+  document.getElementById('peopleLabel').textContent = people === 1 ? 'person' : 'people';
+  document.getElementById('btnMinus').disabled = people <= 1;
+  calculate();
+}
+
+function fmt(n) {
+  return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function calculate() {
+  const bill = parseFloat(document.getElementById('billInput').value) || 0;
+  const panel = document.getElementById('resultsPanel');
+
+  if (!bill) {
+    panel.innerHTML = '<div class="empty-results">Enter a bill amount to see the breakdown</div>';
+    return;
+  }
+
+  const tipAmt    = bill * (tipPct / 100);
+  const totalRaw  = bill + tipAmt;
+  const total     = roundUp ? Math.ceil(totalRaw) : totalRaw;
+  const tipFinal  = total - bill;
+  const perPerson = total / people;
+  const tipPer    = tipFinal / people;
+  const billPer   = bill / people;
+
+  const splitSection = people > 1 ? `
+    <div class="result-row per-person">
+      <span class="result-key">Bill per person</span>
+      <span class="result-val">${fmt(billPer)}</span>
+    </div>
+    <div class="result-row per-person">
+      <span class="result-key">Tip per person</span>
+      <span class="result-val">${fmt(tipPer)}</span>
+    </div>
+    <div class="result-row per-person total">
+      <span class="result-key"><strong>Each person pays</strong></span>
+      <span class="result-val accent">${fmt(perPerson)}</span>
+    </div>` : `
+    <div class="result-row total">
+      <span class="result-key"><strong>Total</strong></span>
+      <span class="result-val accent">${fmt(total)}</span>
+    </div>`;
+
+  panel.innerHTML = `
+    <div class="toggle-row">
+      <span class="toggle-label">Round up total</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="roundToggle" ${roundUp ? 'checked' : ''}
+          onchange="roundUp = this.checked; calculate()"/>
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+    <div class="result-row">
+      <span class="result-key">Bill</span>
+      <span class="result-val">${fmt(bill)}</span>
+    </div>
+    <div class="result-row">
+      <span class="result-key">Tip (${tipPct}%)</span>
+      <span class="result-val">${fmt(tipFinal)}</span>
+    </div>
+    ${splitSection}`;
+}
+</script>
+</body>
+</html>

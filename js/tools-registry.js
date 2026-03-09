@@ -37,6 +37,16 @@ const TOOLS = [
     featured: false,
   },
 
+  {
+    id: 'tip-calculator',
+    label: 'Tip Calculator',
+    description: 'Calculate tip and split the bill between people. Quick preset percentages — 15, 18, 20, 25% — with optional round up.',
+    category: CATEGORIES.GENERAL,
+    path: 'tools/tip-calculator.html',
+    tags: ['tip', 'bill', 'split', 'restaurant', 'calculator', 'dining'],
+    featured: false,
+  },
+
   // ── BRONZE FOUNDRY ────────────────────────────────────────────────────────
   {
     id: 'flask-investment',
