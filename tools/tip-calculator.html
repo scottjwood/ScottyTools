@@ -58,7 +58,7 @@
       color: var(--text-1);
       font-family: 'DM Mono', monospace;
       font-size: 1.6rem;
-      padding: 12px 14px 12px 42px;
+      padding: 12px 40px 12px 42px;
       outline: none; width: 100%;
       transition: border-color 150ms ease;
       -webkit-appearance: none;
@@ -66,6 +66,17 @@
     .bill-input::-webkit-inner-spin-button,
     .bill-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     .bill-input[type=number] { -moz-appearance: textfield; }
+    .bill-clear {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none;
+      color: var(--text-3); font-size: 1rem;
+      cursor: pointer; padding: 4px 6px;
+      border-radius: 4px;
+      transition: color 150ms ease;
+      display: none;
+    }
+    .bill-clear:hover { color: var(--text-1); }
+    .bill-clear.visible { display: block; }
     .bill-input:focus { border-color: var(--accent); }
     .bill-input::placeholder { color: var(--text-3); }
 
@@ -212,7 +223,8 @@
           <div class="bill-wrap">
             <span class="bill-prefix">$</span>
             <input class="bill-input" type="number" id="billInput"
-              placeholder="0.00" min="0" step="0.01" oninput="calculate()"/>
+              placeholder="0.00" min="0" step="0.01" oninput="onBillInput()"/>
+            <button class="bill-clear" id="billClear" onclick="clearBill()" tabindex="-1">✕</button>
           </div>
         </div>
 
@@ -263,6 +275,20 @@ Nav.init();
 let tipPct  = 20;
 let people  = 1;
 let roundUp = false;
+
+function onBillInput() {
+  const val = document.getElementById('billInput').value;
+  document.getElementById('billClear').classList.toggle('visible', val !== '');
+  calculate();
+}
+
+function clearBill() {
+  const input = document.getElementById('billInput');
+  input.value = '';
+  input.focus();
+  document.getElementById('billClear').classList.remove('visible');
+  calculate();
+}
 
 function selectTip(pct, btn) {
   tipPct = pct;
