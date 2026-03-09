@@ -40,6 +40,24 @@
         <div class="ledger-hero-arrow">Open Ledger →</div>
       </div>
 
+      <!-- Tasks widget -->
+      <div class="tasks-widget" id="tasksWidget" style="display:none">
+        <div class="tasks-widget-header">
+          <span class="tasks-widget-title">◈ Tasks</span>
+          <span class="tasks-widget-count" id="wTaskCount"></span>
+          <a href="tools/tasks.html" class="tasks-widget-link">View all →</a>
+        </div>
+        <div class="tasks-widget-add">
+          <input class="tasks-widget-input" id="wTaskInput" type="text"
+            placeholder="Quick add task…"
+            onkeydown="if(event.key==='Enter') wAddTask()"/>
+          <button class="tasks-widget-addbtn" onclick="wAddTask()">+ Add</button>
+        </div>
+        <div class="tasks-widget-list" id="wTaskList">
+          <div class="tasks-widget-loading">Loading tasks…</div>
+        </div>
+      </div>
+
       <!-- Featured / pinned tools -->
       <div id="featuredSection">
         <div class="section-header fade-up-2">
@@ -162,6 +180,136 @@
 
     renderPills();
     renderAll();
+
+    // ── Tasks widget ─────────────────────────────────────────────────────
+    let wTaskData    = [];
+    let wTaskListId  = null;
+    let wTaskListMap = {};
+
+    Auth.onReady(user => {
+      if (user) {
+        document.getElementById('tasksWidget').style.display = '';
+        wLoadTasks();
+      }
+    });
+
+    async function wGFetch(url) {
+      const token = Auth.getToken();
+      if (!token) return null;
+      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+      if (!res.ok) return null;
+      return res.json();
+    }
+
+    async function wLoadTasks() {
+      try {
+        const lists = await wGFetch('https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=100');
+        if (!lists?.items?.length) return;
+
+        // Use saved active lists, or all lists
+        const saved = JSON.parse(localStorage.getItem('tasks_active_lists') || '[]');
+        const active = saved.length
+          ? lists.items.filter(l => saved.includes(l.id))
+          : lists.items;
+
+        active.forEach(l => { wTaskListMap[l.id] = l.title; });
+
+        // Default quick-add list = first active
+        wTaskListId = active[0]?.id || null;
+
+        // Fetch tasks from all active lists
+        const results = await Promise.all(active.map(l =>
+          wGFetch(`https://tasks.googleapis.com/tasks/v1/lists/${l.id}/tasks?showCompleted=false&maxResults=50`)
+            .then(d => (d?.items || []).map(t => ({ ...t, _listId: l.id })))
+        ));
+
+        wTaskData = results.flat()
+          .filter(t => t.title)
+          .sort((a, b) => {
+            if (!a.due && !b.due) return 0;
+            if (!a.due) return 1;
+            if (!b.due) return -1;
+            return a.due.localeCompare(b.due);
+          });
+
+        wRenderTasks();
+      } catch(e) {
+        document.getElementById('wTaskList').innerHTML =
+          '<div class="tasks-widget-empty">Could not load tasks.</div>';
+      }
+    }
+
+    function wRenderTasks() {
+      const list = document.getElementById('wTaskList');
+      const count = document.getElementById('wTaskCount');
+      count.textContent = wTaskData.length + ' pending';
+
+      if (!wTaskData.length) {
+        list.innerHTML = '<div class="tasks-widget-empty">No pending tasks.</div>';
+        return;
+      }
+
+      list.innerHTML = wTaskData.slice(0, 15).map(t => {
+        const dueInfo = t.due ? wGetDue(t.due) : null;
+        const listName = wTaskListMap[t._listId] || '';
+        return `
+          <div class="tasks-widget-item">
+            <button class="tasks-widget-check"
+              onclick="wComplete('${t._listId}','${t.id}')" title="Mark complete"></button>
+            <div class="tasks-widget-body">
+              <div class="tasks-widget-name">${escHtml(t.title)}</div>
+              ${dueInfo ? `<div class="tasks-widget-due ${dueInfo.cls}">${dueInfo.label}${listName ? ' · ' + escHtml(listName) : ''}</div>` : (listName ? `<div class="tasks-widget-due">${escHtml(listName)}</div>` : '')}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function wGetDue(iso) {
+      const due   = new Date(iso);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const dueD  = new Date(due); dueD.setHours(0,0,0,0);
+      const diff  = Math.round((dueD - today) / 86400000);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const label = `${months[due.getMonth()]} ${due.getDate()}${diff === 0 ? ' · Today' : diff < 0 ? ` · ${Math.abs(diff)}d overdue` : ''}`;
+      return { label, cls: diff < 0 ? 'overdue' : diff === 0 ? 'today' : '' };
+    }
+
+    async function wComplete(listId, taskId) {
+      wTaskData = wTaskData.filter(t => !(t._listId === listId && t.id === taskId));
+      wRenderTasks();
+      const token = Auth.getToken();
+      if (!token) return;
+      await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks/${taskId}`,{
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+    }
+
+    async function wAddTask() {
+      const input = document.getElementById('wTaskInput');
+      const title = input.value.trim();
+      if (!title || !wTaskListId) return;
+      const token = Auth.getToken();
+      if (!token) return;
+      input.value = '';
+      const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${wTaskListId}/tasks`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      if (res.ok) {
+        const task = await res.json();
+        wTaskData.unshift({ ...task, _listId: wTaskListId });
+        wRenderTasks();
+      }
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
   </script>
 </body>
 </html>

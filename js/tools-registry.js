@@ -47,6 +47,16 @@ const TOOLS = [
     featured: false,
   },
 
+  {
+    id: 'tasks',
+    label: 'Google Tasks',
+    description: 'View, add, complete and delete tasks across your Google Task lists. Pick which lists to show.',
+    category: CATEGORIES.GENERAL,
+    path: 'tools/tasks.html',
+    tags: ['tasks', 'google', 'todo', 'checklist', 'productivity'],
+    featured: true,
+  },
+
   // ── BRONZE FOUNDRY ────────────────────────────────────────────────────────
   {
     id: 'flask-investment',

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tasks — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    .tool-page { padding-top: var(--nav-h); min-height: 100vh; background: var(--bg); }
+    .tool-container { max-width: 780px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    .tool-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); text-decoration: none; transition: color 150ms ease;
+      margin-bottom: 16px;
+    }
+    .tool-back:hover { color: var(--accent); }
+    .tool-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--text-1); line-height: 1; margin-bottom: 6px;
+    }
+    .tool-title span { color: var(--accent); }
+    .tool-sub { font-size: 0.82rem; color: var(--text-3); margin-bottom: 28px; }
+
+    /* ── List picker ─────────────────────────────────────────── */
+    .list-picker {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px;
+      min-height: 36px; align-items: center;
+    }
+    .list-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 20px; padding: 5px 12px;
+      font-family: 'DM Mono', monospace; font-size: 0.72rem;
+      color: var(--text-3); cursor: pointer; transition: all 150ms ease;
+      user-select: none;
+    }
+    .list-pill:hover { border-color: var(--border-hi); color: var(--text-2); }
+    .list-pill.active {
+      background: rgba(232,160,32,0.1);
+      border-color: rgba(232,160,32,0.35); color: var(--accent);
+    }
+    .list-pill-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+    .list-picker-loading { font-size: 0.75rem; color: var(--text-3); }
+
+    /* ── Add task bar ────────────────────────────────────────── */
+    .add-bar {
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px;
+      display: flex; gap: 10px; align-items: flex-end;
+      margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .add-bar-fields { display: flex; gap: 10px; flex: 1; flex-wrap: wrap; }
+    .add-field { display: flex; flex-direction: column; gap: 5px; }
+    .add-field.grow { flex: 1; min-width: 200px; }
+    .add-label {
+      font-size: 0.62rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-3);
+    }
+    .add-input, .add-select {
+      background: #1a1c1e; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1);
+      font-family: 'DM Mono', monospace; font-size: 0.85rem;
+      padding: 8px 10px; outline: none;
+      transition: border-color 150ms ease;
+    }
+    .add-input { width: 100%; }
+    .add-input:focus, .add-select:focus { border-color: var(--accent); }
+    .add-input::placeholder { color: var(--text-3); }
+    .add-date { width: 150px; }
+    .add-list-select { width: 160px; -webkit-appearance: none; cursor: pointer; }
+    .add-btn {
+      background: rgba(232,160,32,0.1); border: 1px solid rgba(232,160,32,0.3);
+      border-radius: 6px; color: var(--accent);
+      font-family: 'DM Mono', monospace; font-size: 0.8rem;
+      padding: 8px 16px; cursor: pointer; transition: all 150ms ease;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .add-btn:hover { background: rgba(232,160,32,0.18); border-color: rgba(232,160,32,0.5); }
+    .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Task groups ─────────────────────────────────────────── */
+    .task-group { margin-bottom: 24px; }
+    .task-group-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 0 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2px;
+    }
+    .task-group-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.85rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-2);
+    }
+    .task-group-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem; color: var(--text-3);
+    }
+    .task-group-refresh {
+      margin-left: auto; background: none; border: none;
+      color: var(--text-3); font-size: 0.75rem; cursor: pointer;
+      padding: 2px 6px; border-radius: 4px;
+      transition: color 150ms ease;
+    }
+    .task-group-refresh:hover { color: var(--accent); }
+
+    /* ── Task item ───────────────────────────────────────────── */
+    .task-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 150ms ease;
+    }
+    .task-item:last-child { border-bottom: none; }
+    .task-item.completed { opacity: 0.45; }
+
+    .task-check {
+      width: 18px; height: 18px; flex-shrink: 0;
+      border: 1.5px solid var(--border-hi); border-radius: 50%;
+      cursor: pointer; margin-top: 2px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 150ms ease; background: none;
+    }
+    .task-check:hover { border-color: #4ade80; background: rgba(74,222,128,0.08); }
+    .task-check.done { border-color: #4ade80; background: rgba(74,222,128,0.15); }
+    .task-check.done::after {
+      content: '✓'; font-size: 0.65rem; color: #4ade80; line-height: 1;
+    }
+
+    .task-body { flex: 1; min-width: 0; }
+    .task-title {
+      font-size: 0.88rem; color: var(--text-1); line-height: 1.4;
+      word-break: break-word;
+    }
+    .task-item.completed .task-title { text-decoration: line-through; color: var(--text-3); }
+    .task-notes {
+      font-size: 0.72rem; color: var(--text-3); margin-top: 3px;
+      line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+    }
+    .task-due {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem; margin-top: 4px;
+      color: var(--text-3);
+    }
+    .task-due.overdue { color: #f87171; }
+    .task-due.today   { color: var(--accent); }
+    .task-due.soon    { color: #fb923c; }
+
+    .task-delete {
+      background: none; border: none; color: var(--text-3);
+      font-size: 0.8rem; cursor: pointer; padding: 2px 6px;
+      border-radius: 4px; opacity: 0; transition: all 150ms ease;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .task-item:hover .task-delete { opacity: 1; }
+    .task-delete:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+
+    /* ── Empty / loading states ──────────────────────────────── */
+    .state-box {
+      text-align: center; padding: 48px 20px;
+      color: var(--text-3); font-size: 0.82rem;
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 20px;
+    }
+    .state-icon { font-size: 1.8rem; margin-bottom: 10px; }
+    .state-msg { line-height: 1.6; }
+
+    /* ── Completed section toggle ─────────────────────────────── */
+    .completed-toggle {
+      font-size: 0.72rem; color: var(--text-3);
+      background: none; border: none; cursor: pointer;
+      padding: 8px 4px; display: flex; align-items: center; gap: 6px;
+      transition: color 150ms ease; margin-top: 4px;
+    }
+    .completed-toggle:hover { color: var(--text-2); }
+
+    /* ── Status toast ────────────────────────────────────────── */
+    .task-status {
+      font-size: 0.72rem; color: var(--text-3);
+      font-family: 'DM Mono', monospace;
+      padding: 4px 0; min-height: 20px;
+      transition: color 150ms ease;
+    }
+    .task-status.ok  { color: #4ade80; }
+    .task-status.err { color: #f87171; }
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+
+<div class="tool-page">
+  <div class="tool-container">
+    <a href="../index.html" class="tool-back">← ScottyTools</a>
+    <div class="tool-title">Google <span>Tasks</span></div>
+    <div class="tool-sub">View and manage your tasks across any Google Task list.</div>
+
+    <!-- List picker -->
+    <div class="list-picker" id="listPicker">
+      <span class="list-picker-loading">Loading task lists…</span>
+    </div>
+
+    <!-- Add task -->
+    <div class="add-bar">
+      <div class="add-bar-fields">
+        <div class="add-field grow">
+          <div class="add-label">New Task</div>
+          <input class="add-input" type="text" id="newTaskTitle"
+            placeholder="Task title…"
+            onkeydown="if(event.key==='Enter') addTask()"/>
+        </div>
+        <div class="add-field">
+          <div class="add-label">Due Date</div>
+          <input class="add-input add-date" type="date" id="newTaskDate"/>
+        </div>
+        <div class="add-field">
+          <div class="add-label">List</div>
+          <select class="add-select add-list-select" id="newTaskList"></select>
+        </div>
+      </div>
+      <button class="add-btn" id="addBtn" onclick="addTask()">+ Add</button>
+    </div>
+
+    <div class="task-status" id="taskStatus"></div>
+
+    <!-- Task lists -->
+    <div id="tasksContainer">
+      <div class="state-box">
+        <div class="state-icon">☑</div>
+        <div class="state-msg">Sign in to load your tasks</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/tools-registry.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.init();
+
+// ── State ────────────────────────────────────────────────────────────────
+let allLists    = [];   // { id, title }
+let activeLists = new Set(JSON.parse(localStorage.getItem('tasks_active_lists') || '[]'));
+let taskData    = {};   // listId → [task]
+let showCompleted = {};
+
+// ── Auth gate ────────────────────────────────────────────────────────────
+Auth.init();
+Auth.onReady(user => {
+  if (user) {
+    loadLists();
+  } else {
+    document.getElementById('listPicker').innerHTML =
+      '<span class="list-picker-loading">Sign in via the nav to load tasks.</span>';
+  }
+});
+
+// ── API helpers ──────────────────────────────────────────────────────────
+async function gFetch(url, opts = {}) {
+  const token = Auth.getToken();
+  if (!token) throw new Error('Not signed in');
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ── Load lists ───────────────────────────────────────────────────────────
+async function loadLists() {
+  try {
+    const data = await gFetch('https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=100');
+    allLists = (data.items || []).map(l => ({ id: l.id, title: l.title }));
+
+    // Default: activate all lists if none saved
+    if (activeLists.size === 0) {
+      allLists.forEach(l => activeLists.add(l.id));
+      saveActiveLists();
+    }
+
+    renderListPicker();
+    populateAddListSelect();
+    await loadTasks();
+  } catch(e) {
+    setStatus('Failed to load lists: ' + e.message, 'err');
+  }
+}
+
+function renderListPicker() {
+  const picker = document.getElementById('listPicker');
+  if (!allLists.length) {
+    picker.innerHTML = '<span class="list-picker-loading">No task lists found.</span>';
+    return;
+  }
+  picker.innerHTML = allLists.map(l => `
+    <div class="list-pill ${activeLists.has(l.id) ? 'active' : ''}"
+      onclick="toggleList('${l.id}')">
+      <span class="list-pill-dot"></span>
+      ${escHtml(l.title)}
+    </div>`).join('');
+}
+
+function toggleList(id) {
+  if (activeLists.has(id)) {
+    if (activeLists.size === 1) return; // keep at least one
+    activeLists.delete(id);
+  } else {
+    activeLists.add(id);
+  }
+  saveActiveLists();
+  renderListPicker();
+  renderTasks();
+}
+
+function saveActiveLists() {
+  localStorage.setItem('tasks_active_lists', JSON.stringify([...activeLists]));
+}
+
+function populateAddListSelect() {
+  const sel = document.getElementById('newTaskList');
+  sel.innerHTML = allLists.map(l =>
+    `<option value="${l.id}">${escHtml(l.title)}</option>`
+  ).join('');
+}
+
+// ── Load tasks ───────────────────────────────────────────────────────────
+async function loadTasks() {
+  setStatus('Loading…');
+  try {
+    const active = allLists.filter(l => activeLists.has(l.id));
+    const results = await Promise.all(active.map(async l => {
+      const data = await gFetch(
+        `https://tasks.googleapis.com/tasks/v1/lists/${l.id}/tasks?showCompleted=true&showHidden=true&maxResults=100`
+      );
+      return { list: l, tasks: data.items || [] };
+    }));
+    results.forEach(({ list, tasks }) => { taskData[list.id] = tasks; });
+    setStatus('');
+    renderTasks();
+  } catch(e) {
+    setStatus('Failed to load tasks: ' + e.message, 'err');
+  }
+}
+
+// ── Render tasks ─────────────────────────────────────────────────────────
+function renderTasks() {
+  const container = document.getElementById('tasksContainer');
+  const active = allLists.filter(l => activeLists.has(l.id));
+
+  if (!active.length) {
+    container.innerHTML = '<div class="state-box"><div class="state-icon">☑</div><div class="state-msg">Select at least one list above.</div></div>';
+    return;
+  }
+
+  let html = '';
+  let anyTasks = false;
+
+  active.forEach(list => {
+    const tasks = (taskData[list.id] || []).filter(t => t.title);
+    const pending   = tasks.filter(t => t.status !== 'completed').sort(sortByDue);
+    const completed = tasks.filter(t => t.status === 'completed');
+    const showComp  = showCompleted[list.id];
+    anyTasks = anyTasks || tasks.length > 0;
+
+    html += `
+      <div class="task-group">
+        <div class="task-group-header">
+          <span class="task-group-name">${escHtml(list.title)}</span>
+          <span class="task-group-count">${pending.length} pending</span>
+          <button class="task-group-refresh" onclick="refreshList('${list.id}')" title="Refresh">↻</button>
+        </div>`;
+
+    if (!pending.length && !completed.length) {
+      html += `<div style="padding:16px 4px;font-size:0.8rem;color:var(--text-3)">No tasks — add one above.</div>`;
+    }
+
+    pending.forEach(t => { html += renderTaskItem(t, list.id); });
+
+    if (completed.length) {
+      html += `
+        <button class="completed-toggle" onclick="toggleCompleted('${list.id}')">
+          ${showComp ? '▾' : '▸'} ${completed.length} completed
+        </button>`;
+      if (showComp) {
+        completed.forEach(t => { html += renderTaskItem(t, list.id); });
+      }
+    }
+
+    html += `</div>`;
+  });
+
+  if (!anyTasks) {
+    container.innerHTML = '<div class="state-box"><div class="state-icon">✓</div><div class="state-msg">All clear — no tasks in selected lists.</div></div>';
+    return;
+  }
+
+  container.innerHTML = html;
+}
+
+function renderTaskItem(task, listId) {
+  const done    = task.status === 'completed';
+  const dueInfo = task.due ? getDueInfo(task.due) : null;
+  const dueHtml = dueInfo
+    ? `<div class="task-due ${dueInfo.cls}">${dueInfo.label}</div>` : '';
+  const notesHtml = task.notes
+    ? `<div class="task-notes">${escHtml(task.notes.slice(0, 200))}${task.notes.length > 200 ? '…' : ''}</div>` : '';
+
+  return `
+    <div class="task-item ${done ? 'completed' : ''}" id="task-${task.id}">
+      <button class="task-check ${done ? 'done' : ''}"
+        onclick="toggleComplete('${listId}','${task.id}','${done}')"
+        title="${done ? 'Mark incomplete' : 'Mark complete'}"></button>
+      <div class="task-body">
+        <div class="task-title">${escHtml(task.title)}</div>
+        ${notesHtml}
+        ${dueHtml}
+      </div>
+      <button class="task-delete" onclick="deleteTask('${listId}','${task.id}')" title="Delete">✕</button>
+    </div>`;
+}
+
+function getDueInfo(dueISO) {
+  // Tasks API returns due date as RFC 3339 — strip time
+  const due   = new Date(dueISO);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dueD  = new Date(due); dueD.setHours(0,0,0,0);
+  const diff  = Math.round((dueD - today) / 86400000);
+
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const label  = `${months[due.getMonth()]} ${due.getDate()}${diff === 0 ? ' · Today' : diff === 1 ? ' · Tomorrow' : diff < 0 ? ` · ${Math.abs(diff)}d overdue` : ''}`;
+
+  let cls = '';
+  if (diff < 0)  cls = 'overdue';
+  if (diff === 0) cls = 'today';
+  if (diff === 1) cls = 'soon';
+
+  return { label, cls };
+}
+
+function sortByDue(a, b) {
+  if (!a.due && !b.due) return 0;
+  if (!a.due) return 1;
+  if (!b.due) return -1;
+  return a.due.localeCompare(b.due);
+}
+
+function toggleCompleted(listId) {
+  showCompleted[listId] = !showCompleted[listId];
+  renderTasks();
+}
+
+// ── Add task ─────────────────────────────────────────────────────────────
+async function addTask() {
+  const title   = document.getElementById('newTaskTitle').value.trim();
+  const dateVal = document.getElementById('newTaskDate').value;
+  const listId  = document.getElementById('newTaskList').value;
+
+  if (!title) {
+    document.getElementById('newTaskTitle').focus();
+    return;
+  }
+
+  const btn = document.getElementById('addBtn');
+  btn.disabled = true;
+  setStatus('Adding…');
+
+  const body = { title };
+  if (dateVal) {
+    // Tasks API requires RFC 3339 — midnight UTC
+    body.due = new Date(dateVal + 'T00:00:00Z').toISOString();
+  }
+
+  try {
+    const task = await gFetch(
+      `https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks`,
+      { method: 'POST', body: JSON.stringify(body) }
+    );
+    if (!taskData[listId]) taskData[listId] = [];
+    taskData[listId].unshift(task);
+    document.getElementById('newTaskTitle').value = '';
+    document.getElementById('newTaskDate').value  = '';
+    setStatus('Task added.', 'ok');
+    renderTasks();
+  } catch(e) {
+    setStatus('Failed: ' + e.message, 'err');
+  }
+  btn.disabled = false;
+}
+
+// ── Complete task ─────────────────────────────────────────────────────────
+async function toggleComplete(listId, taskId, isDone) {
+  const wasDone = isDone === 'true';
+  const newStatus = wasDone ? 'needsAction' : 'completed';
+
+  // Optimistic update
+  const task = (taskData[listId] || []).find(t => t.id === taskId);
+  if (task) { task.status = newStatus; if (!wasDone) task.completed = new Date().toISOString(); }
+  renderTasks();
+
+  try {
+    await gFetch(
+      `https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks/${taskId}`,
+      { method: 'PATCH', body: JSON.stringify({ status: newStatus }) }
+    );
+  } catch(e) {
+    // Revert
+    if (task) task.status = wasDone ? 'completed' : 'needsAction';
+    renderTasks();
+    setStatus('Failed to update: ' + e.message, 'err');
+  }
+}
+
+// ── Delete task ───────────────────────────────────────────────────────────
+async function deleteTask(listId, taskId) {
+  // Optimistic
+  taskData[listId] = (taskData[listId] || []).filter(t => t.id !== taskId);
+  renderTasks();
+
+  try {
+    await gFetch(
+      `https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks/${taskId}`,
+      { method: 'DELETE' }
+    );
+  } catch(e) {
+    setStatus('Failed to delete: ' + e.message, 'err');
+    await refreshList(listId);
+  }
+}
+
+async function refreshList(listId) {
+  try {
+    const data = await gFetch(
+      `https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks?showCompleted=true&showHidden=true&maxResults=100`
+    );
+    taskData[listId] = data.items || [];
+    renderTasks();
+  } catch(e) {
+    setStatus('Refresh failed: ' + e.message, 'err');
+  }
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let statusTimer;
+function setStatus(msg, type = '') {
+  const el = document.getElementById('taskStatus');
+  el.textContent  = msg;
+  el.className    = 'task-status ' + type;
+  clearTimeout(statusTimer);
+  if (type === 'ok') statusTimer = setTimeout(() => { el.textContent = ''; el.className = 'task-status'; }, 3000);
+}
+</script>
+</body>
+</html>
