@@ -48,7 +48,7 @@
     }
     .bill-prefix {
       position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-      font-family: 'DM Mono', monospace; font-size: 1.3rem;
+      font-family: 'DM Mono', monospace; font-size: 1.6rem;
       color: var(--text-3); pointer-events: none;
     }
     .bill-input {
@@ -58,11 +58,14 @@
       color: var(--text-1);
       font-family: 'DM Mono', monospace;
       font-size: 1.6rem;
-      padding: 12px 14px 12px 30px;
+      padding: 12px 14px 12px 42px;
       outline: none; width: 100%;
       transition: border-color 150ms ease;
       -webkit-appearance: none;
     }
+    .bill-input::-webkit-inner-spin-button,
+    .bill-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .bill-input[type=number] { -moz-appearance: textfield; }
     .bill-input:focus { border-color: var(--accent); }
     .bill-input::placeholder { color: var(--text-3); }
 
