@@ -346,7 +346,7 @@ async function attemptUnlock() {
   let source = 'sheets';
 
   try {
-    const result = await api('getPin', {});
+    const result = await api('loadAll', {});
     const sheetPin = result.pin ? String(result.pin).trim() : null;
     if (sheetPin) {
       localStorage.setItem('ledger_pin', sheetPin);
@@ -374,6 +374,14 @@ async function attemptUnlock() {
     document.getElementById('lockScreen').style.display = 'none';
     document.getElementById('ledgerApp').style.display  = 'block';
     document.getElementById('pinDebug').textContent = '';
+    // If we successfully called loadAll during PIN verification, use that data
+    // Otherwise call loadAll fresh (e.g. fallback to cache path)
+    if (source === 'sheets') {
+      try {
+        const cached = localStorage.getItem('ledger_cache');
+        // We already fetched during PIN check — trigger a fresh full load
+      } catch {}
+    }
     await loadAll();
   } else {
     const input = document.getElementById('pinInput');
@@ -416,7 +424,8 @@ async function api(action, payload) {
   const res = await fetch(url, { method: 'GET' });
   const json = await res.json();
   if (json.ok === false) throw new Error(json.error || 'API error');
-  return json;
+  // Existing Code.gs wraps payload in { ok: true, data: ... }
+  return json.data !== undefined ? json.data : json;
 }
 
 // Offline queue
@@ -500,10 +509,21 @@ async function loadAll() {
   try {
     setConnState('syncing');
     const data = await api('loadAll', {});
-    state.rate     = data.rate    || 75;
+    state.rate     = parseFloat(data.rate)  || 75;
     state.clients  = data.clients || [];
-    state.pending  = data.pending || [];
-    state.history  = data.history || [];
+    // Ensure numeric fields are numbers (Code.gs may return strings from sheet)
+    state.pending  = (data.pending || []).map(e => ({
+      ...e,
+      startMin: Number(e.startMin),
+      endMin:   Number(e.endMin),
+      lunchMin: Number(e.lunchMin),
+    }));
+    state.history  = (data.history || []).map(h => ({
+      ...h,
+      total:     parseFloat(h.total)     || 0,
+      rate_used: parseFloat(h.rate_used) || state.rate,
+      entries:   Array.isArray(h.entries) ? h.entries : [],
+    }));
     if (data.pin) { state.pin = data.pin; localStorage.setItem('ledger_pin', data.pin); }
     localStorage.setItem('ledger_cache', JSON.stringify(state));
     setConnState('online');
@@ -1011,7 +1031,8 @@ async function markInvoiced(client) {
   renderHistory();
 
   try {
-    await apiWrite('markInvoiced', payload);
+    // Code.gs markInvoiced expects { client, rate_used }
+    await apiWrite('markInvoiced', { client, rate_used });
     toast(`Invoiced ${entries.length} entries for ${client}.`, 'success');
   } catch(e) {
     if (e.message === 'offline-queued') toast('Invoice queued — will sync when online.');
