@@ -28,6 +28,15 @@ const TOOLS = [
 
   // ── BRONZE FOUNDRY ────────────────────────────────────────────────────────
   {
+    id: 'flask-investment',
+    label: 'Flask Investment Calculator',
+    description: 'Calculate investment powder and water for flask casting. Set kiln time and get mix start and bronze pour times.',
+    category: CATEGORIES.FOUNDRY,
+    path: 'tools/flask-investment.html',
+    tags: ['investment', 'flask', 'casting', 'burnout', 'kiln', 'prestige', 'optima', 'schedule'],
+    featured: true,
+  },
+  {
     id: 'pour-weight',
     label: 'Pour Weight Estimator',
     description: 'Estimate bronze pour weight from wax weight using alloy ratios.',

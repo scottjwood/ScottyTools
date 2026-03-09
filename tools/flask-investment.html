@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Flask Investment Calculator — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    /* ── Page layout ─────────────────────────────────────────── */
+    .tool-page { padding-top: var(--nav-h); min-height: 100vh; background: var(--bg); }
+    .tool-container { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    .tool-header { margin-bottom: 36px; }
+    .tool-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); text-decoration: none;
+      transition: color 150ms ease;
+      margin-bottom: 16px;
+    }
+    .tool-back:hover { color: var(--accent); }
+    .tool-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text-1); line-height: 1;
+    }
+    .tool-title span { color: var(--accent); }
+    .tool-sub { font-size: 0.82rem; color: var(--text-3); margin-top: 6px; }
+
+    /* ── Two-column layout ───────────────────────────────────── */
+    .calc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 680px) {
+      .calc-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Panel ───────────────────────────────────────────────── */
+    .panel {
+      background: #131516;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .panel-icon {
+      width: 28px; height: 28px;
+      background: rgba(232,160,32,0.1);
+      border: 1px solid rgba(232,160,32,0.2);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; flex-shrink: 0;
+    }
+    .panel-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.85rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-2);
+    }
+    .panel-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Field ───────────────────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field-label {
+      font-size: 0.65rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-3);
+    }
+    .field-row { display: flex; gap: 8px; }
+    .field-row .field { flex: 1; }
+
+    input[type="number"], input[type="time"], select {
+      background: #1a1c1e;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-1);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      padding: 9px 11px;
+      outline: none;
+      width: 100%;
+      transition: border-color 150ms ease;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    select { cursor: pointer; }
+
+    /* ── Toggle pill ─────────────────────────────────────────── */
+    .toggle-group { display: flex; gap: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+    .toggle-btn {
+      flex: 1; padding: 8px 12px;
+      background: #1a1c1e; border: none;
+      color: var(--text-3);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem; letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: all 150ms ease;
+      border-right: 1px solid var(--border);
+    }
+    .toggle-btn:last-child { border-right: none; }
+    .toggle-btn.active { background: rgba(232,160,32,0.12); color: var(--accent); }
+    .toggle-btn:hover:not(.active) { background: #222426; color: var(--text-2); }
+
+    /* ── Result block ────────────────────────────────────────── */
+    .result-block {
+      background: #0d0f10;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .result-row {
+      display: flex; justify-content: space-between;
+      align-items: baseline; gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-key { font-size: 0.75rem; color: var(--text-3); }
+    .result-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 1rem; font-weight: 500;
+      color: var(--text-1);
+    }
+    .result-val.accent { color: var(--accent); font-size: 1.2rem; }
+    .result-unit { font-size: 0.7rem; color: var(--text-3); margin-left: 3px; }
+
+    /* ── Burnout schedule ────────────────────────────────────── */
+    .schedule-wrap { grid-column: 1 / -1; }
+
+    .step-list { display: flex; flex-direction: column; gap: 0; }
+    .step {
+      display: grid;
+      grid-template-columns: 24px 1fr auto auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      transition: background 150ms ease;
+      position: relative;
+    }
+    .step:last-child { border-bottom: none; }
+    .step:hover { background: rgba(255,255,255,0.02); }
+
+    /* Timeline dot + line */
+    .step-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+      border: 2px solid #131516;
+      position: relative;
+      z-index: 1;
+      flex-shrink: 0;
+      justify-self: center;
+    }
+    .step-dot.active { background: var(--accent); box-shadow: 0 0 8px rgba(232,160,32,0.4); }
+    .step-dot.pour { background: #f87171; box-shadow: 0 0 8px rgba(248,113,113,0.4); }
+    .step-dot.mix  { background: #60a5fa; box-shadow: 0 0 8px rgba(96,165,250,0.35); }
+
+    .step-name { font-size: 0.82rem; color: var(--text-2); }
+    .step-note { font-size: 0.7rem; color: var(--text-3); margin-top: 2px; }
+
+    .step-dur {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem; color: var(--text-3);
+      white-space: nowrap;
+    }
+    .step-temp {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-3);
+      text-align: right;
+      white-space: nowrap;
+      min-width: 60px;
+    }
+    .step-time {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem; color: var(--text-1);
+      text-align: right;
+      white-space: nowrap;
+      min-width: 72px;
+    }
+    .step-time.highlight { color: var(--accent); font-size: 0.9rem; }
+    .step-time.pour-time { color: #f87171; font-size: 0.9rem; }
+    .step-time.mix-time  { color: #60a5fa; font-size: 0.9rem; }
+
+    /* Editable duration */
+    .step-dur-input {
+      width: 42px;
+      background: #1a1c1e;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: var(--text-3);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      padding: 2px 5px;
+      text-align: center;
+      outline: none;
+      transition: border-color 150ms ease;
+    }
+    .step-dur-input:focus { border-color: var(--accent); color: var(--text-1); }
+
+    /* ── Key times callout ───────────────────────────────────── */
+    .key-times {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    @media (max-width: 500px) { .key-times { grid-template-columns: 1fr; } }
+    .key-time-card {
+      background: #0d0f10;
+      border-radius: 8px;
+      padding: 12px 14px;
+      border-left: 3px solid var(--border);
+    }
+    .key-time-card.mix-card  { border-color: #60a5fa; }
+    .key-time-card.kiln-card { border-color: var(--accent); }
+    .key-time-card.pour-card { border-color: #f87171; }
+    .key-time-label { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
+    .key-time-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.1rem; font-weight: 500;
+    }
+    .mix-card  .key-time-val { color: #60a5fa; }
+    .kiln-card .key-time-val { color: var(--accent); }
+    .pour-card .key-time-val { color: #f87171; }
+    .key-time-date { font-size: 0.7rem; color: var(--text-3); margin-top: 2px; }
+
+    /* ── Mixing reference ────────────────────────────────────── */
+    .mix-steps {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      padding: 18px;
+    }
+    .mix-step-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: #1a1c1e;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+    }
+    .mix-step-num {
+      width: 18px; height: 18px;
+      background: rgba(232,160,32,0.15);
+      color: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 600;
+      flex-shrink: 0;
+    }
+    .mix-step-label { color: var(--text-2); }
+    .mix-step-time  { color: var(--text-3); margin-left: 2px; }
+
+    /* ── Divider label ───────────────────────────────────────── */
+    .section-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--text-3);
+      padding: 10px 18px 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Cols header ─────────────────────────────────────────── */
+    .step-cols-header {
+      display: grid;
+      grid-template-columns: 24px 1fr auto auto auto;
+      gap: 12px;
+      padding: 8px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .col-head {
+      font-size: 0.6rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-3);
+    }
+    .col-head:nth-child(3) { text-align: center; }
+    .col-head:nth-child(4) { text-align: right; min-width: 60px; }
+    .col-head:nth-child(5) { text-align: right; min-width: 72px; }
+
+    /* ── Reset button ────────────────────────────────────────── */
+    .reset-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-3);
+      font-family: 'DM Mono', monospace; font-size: 0.72rem;
+      padding: 5px 10px; cursor: pointer;
+      transition: all 150ms ease; margin-left: auto; display: block;
+    }
+    .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Responsive step cols ────────────────────────────────── */
+    @media (max-width: 500px) {
+      .step { grid-template-columns: 10px 1fr auto auto; }
+      .step-temp { display: none; }
+      .step-cols-header .col-head:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+
+<div class="tool-page">
+  <div class="tool-container">
+
+    <div class="tool-header">
+      <a href="../index.html" class="tool-back">← ScottyTools</a>
+      <div class="tool-title">Flask <span>Investment</span> Calculator</div>
+      <div class="tool-sub">Prestige Optima investment powder · Burnout schedule calculator</div>
+    </div>
+
+    <div class="calc-grid">
+
+      <!-- ── FLASK SIZE ── -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-icon">⬡</div>
+          <div class="panel-title">Flask Size</div>
+        </div>
+        <div class="panel-body">
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Diameter (in)</div>
+              <input type="number" id="diameter" value="4" min="1" max="20" step="0.5" oninput="calculate()"/>
+            </div>
+            <div class="field">
+              <div class="field-label">Height (in)</div>
+              <input type="number" id="height" value="4" min="1" max="20" step="0.5" oninput="calculate()"/>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">Design Weight</div>
+            <div class="toggle-group">
+              <button class="toggle-btn active" id="btnLight" onclick="setDesign('light')">Light</button>
+              <button class="toggle-btn" id="btnThick" onclick="setDesign('thick')">Thick</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">Overshoot Multiplier</div>
+            <input type="number" id="multiplier" value="1.3" min="1.0" max="2.0" step="0.05" oninput="calculate()"/>
+          </div>
+
+          <div class="result-block">
+            <div class="result-row">
+              <span class="result-key">Powder</span>
+              <span class="result-val accent" id="outPowder">—<span class="result-unit">g</span></span>
+            </div>
+            <div class="result-row">
+              <span class="result-key">Water</span>
+              <span class="result-val" id="outWater">—<span class="result-unit">ml</span></span>
+            </div>
+            <div class="result-row">
+              <span class="result-key">Ratio</span>
+              <span class="result-val" id="outRatio">—</span>
+            </div>
+          </div>
+
+          <!-- Mixing reference -->
+          <div class="field-label" style="margin-bottom:2px">Mixing Process (8 min total)</div>
+          <div class="mix-steps" style="padding:0;gap:6px">
+            <div class="mix-step-chip"><div class="mix-step-num">1</div><span class="mix-step-label">Mix powder/water</span><span class="mix-step-time">4 min</span></div>
+            <div class="mix-step-chip"><div class="mix-step-num">2</div><span class="mix-step-label">Vacuum bowl</span><span class="mix-step-time">1 min</span></div>
+            <div class="mix-step-chip"><div class="mix-step-num">3</div><span class="mix-step-label">Pour into flask</span><span class="mix-step-time">1 min</span></div>
+            <div class="mix-step-chip"><div class="mix-step-num">4</div><span class="mix-step-label">Vacuum flask</span><span class="mix-step-time">2 min</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── KILN START TIME ── -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-icon">🕐</div>
+          <div class="panel-title">Schedule</div>
+        </div>
+        <div class="panel-body">
+          <div class="field">
+            <div class="field-label">Kiln Start Date</div>
+            <input type="date" id="kilnDate" oninput="calculate()" style="background:#1a1c1e;border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-family:'DM Mono',monospace;font-size:0.9rem;padding:9px 11px;outline:none;width:100%;transition:border-color 150ms ease;"/>
+          </div>
+          <div class="field">
+            <div class="field-label">Kiln Start Time</div>
+            <input type="time" id="kilnTime" value="19:00" oninput="calculate()"/>
+          </div>
+
+          <div class="result-block" style="margin-top:4px">
+            <div class="result-row">
+              <span class="result-key" style="color:#60a5fa">▸ Start Mixing</span>
+              <div>
+                <div class="result-val" id="outMixTime" style="color:#60a5fa;text-align:right">—</div>
+                <div style="font-size:0.68rem;color:var(--text-3);text-align:right" id="outMixDate"></div>
+              </div>
+            </div>
+            <div class="result-row">
+              <span class="result-key" style="color:var(--accent)">▸ Put in Kiln</span>
+              <div>
+                <div class="result-val" id="outKilnTime" style="color:var(--accent);text-align:right">—</div>
+                <div style="font-size:0.68rem;color:var(--text-3);text-align:right" id="outKilnDate"></div>
+              </div>
+            </div>
+            <div class="result-row">
+              <span class="result-key" style="color:#f87171">▸ Pour Bronze</span>
+              <div>
+                <div class="result-val" id="outPourTime" style="color:#f87171;text-align:right">—</div>
+                <div style="font-size:0.68rem;color:var(--text-3);text-align:right" id="outPourDate"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-label" style="margin-bottom:2px">Total burnout duration</div>
+          <div style="font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--text-3)" id="outTotalHrs">—</div>
+        </div>
+      </div>
+
+      <!-- ── BURNOUT SCHEDULE ── -->
+      <div class="panel schedule-wrap">
+        <div class="panel-header" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="panel-icon">🔥</div>
+            <div class="panel-title">Burnout Schedule</div>
+          </div>
+          <button class="reset-btn" onclick="resetDurations()" style="margin:0">Reset Durations</button>
+        </div>
+
+        <!-- Key times -->
+        <div class="key-times">
+          <div class="key-time-card mix-card">
+            <div class="key-time-label">Start Mixing</div>
+            <div class="key-time-val" id="ktMix">—</div>
+            <div class="key-time-date" id="ktMixDate"></div>
+          </div>
+          <div class="key-time-card kiln-card">
+            <div class="key-time-label">Kiln Start</div>
+            <div class="key-time-val" id="ktKiln">—</div>
+            <div class="key-time-date" id="ktKilnDate"></div>
+          </div>
+          <div class="key-time-card pour-card">
+            <div class="key-time-label">Pour Bronze</div>
+            <div class="key-time-val" id="ktPour">—</div>
+            <div class="key-time-date" id="ktPourDate"></div>
+          </div>
+        </div>
+
+        <!-- Step column headers -->
+        <div class="step-cols-header">
+          <div class="col-head"></div>
+          <div class="col-head">Step</div>
+          <div class="col-head">Hrs</div>
+          <div class="col-head">Temp</div>
+          <div class="col-head" style="text-align:right">Start</div>
+        </div>
+
+        <div class="step-list" id="stepList"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="../js/tools-registry.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.init();
+
+// ── Default step definitions ──────────────────────────────────────────────
+const DEFAULT_STEPS = [
+  { key: 'mix',    name: 'Mixing & Investing',  hrs: 8/60,  note: 'Mix 4 min, vacuum, pour, vacuum flask', tempC: null,  tempF: null,   dot: 'mix'  },
+  { key: 'bench',  name: 'Bench Set',            hrs: 4,     note: 'Sit 3–4 hrs for green strength',       tempC: null,  tempF: null,   dot: ''     },
+  { key: 'water',  name: 'Water Hold',           hrs: 3,     note: '2–4 hrs to drive off water',           tempC: 100,   tempF: 212,    dot: 'active' },
+  { key: 'ramp',   name: 'Ramp to Peak',         hrs: 2,     note: 'Fast ramp to peak temp',               tempC: 100,   tempF: 212,    dot: 'active' },
+  { key: 'peak',   name: 'Peak Burnout',         hrs: 5,     note: 'Hold at peak — burn out all wax/binder', tempC: 780, tempF: 1436,   dot: 'active' },
+  { key: 'cool',   name: 'Cool to Pour Temp',    hrs: 2,     note: 'Lower to casting temp 500–600°C',      tempC: 500,   tempF: 932,    dot: 'active' },
+  { key: 'hold',   name: 'Hold at Pour Temp',    hrs: 2,     note: 'Hold at pouring temp until ready',     tempC: 500,   tempF: 932,    dot: 'pour'  },
+];
+
+// Load saved durations from localStorage
+let steps = loadSteps();
+
+function loadSteps() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('flask_steps') || 'null');
+    if (saved && saved.length === DEFAULT_STEPS.length) {
+      return DEFAULT_STEPS.map((s, i) => ({ ...s, hrs: saved[i] }));
+    }
+  } catch {}
+  return DEFAULT_STEPS.map(s => ({ ...s }));
+}
+
+function saveSteps() {
+  localStorage.setItem('flask_steps', JSON.stringify(steps.map(s => s.hrs)));
+}
+
+function resetDurations() {
+  steps = DEFAULT_STEPS.map(s => ({ ...s }));
+  localStorage.removeItem('flask_steps');
+  calculate();
+}
+
+// ── Design toggle ─────────────────────────────────────────────────────────
+let design = 'light';
+function setDesign(d) {
+  design = d;
+  document.getElementById('btnLight').classList.toggle('active', d === 'light');
+  document.getElementById('btnThick').classList.toggle('active', d === 'thick');
+  calculate();
+}
+
+// ── Date helpers ──────────────────────────────────────────────────────────
+function fmtTime(date) {
+  let h = date.getHours(), m = date.getMinutes();
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2,'0')} ${ap}`;
+}
+function fmtDate(date) {
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${days[date.getDay()]} ${months[date.getMonth()]} ${date.getDate()}`;
+}
+function fmtHrs(hrs) {
+  const h = Math.floor(hrs), m = Math.round((hrs - h) * 60);
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+function mround(val, multiple) {
+  return Math.round(val / multiple) * multiple;
+}
+
+// ── Main calculation ──────────────────────────────────────────────────────
+function calculate() {
+  // ── Investment calc ──
+  const diameter    = parseFloat(document.getElementById('diameter').value)    || 0;
+  const height      = parseFloat(document.getElementById('height').value)      || 0;
+  const multiplier  = parseFloat(document.getElementById('multiplier').value)  || 1.3;
+  const ratio       = design === 'light' ? 0.38 : 0.37;
+
+  const volumeCubicIn = Math.PI * Math.pow(diameter / 2, 2) * height;
+  const volumeML      = volumeCubicIn * 16.387;
+  const powder        = mround(volumeML * multiplier, 1);
+  const water         = mround(powder * ratio, 0.5);
+
+  document.getElementById('outPowder').innerHTML = `${powder}<span class="result-unit">g</span>`;
+  document.getElementById('outWater').innerHTML  = `${water}<span class="result-unit">ml</span>`;
+  document.getElementById('outRatio').textContent = `${ratio * 100}/100 (${design})`;
+
+  // ── Schedule calc ──
+  const kilnDateVal = document.getElementById('kilnDate').value;
+  const kilnTimeVal = document.getElementById('kilnTime').value;
+  if (!kilnTimeVal) return;
+
+  // Build kiln datetime
+  let kilnDT;
+  if (kilnDateVal) {
+    const [y,mo,d] = kilnDateVal.split('-').map(Number);
+    const [h,m] = kilnTimeVal.split(':').map(Number);
+    kilnDT = new Date(y, mo-1, d, h, m, 0);
+  } else {
+    const today = new Date();
+    const [h,m] = kilnTimeVal.split(':').map(Number);
+    kilnDT = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0);
+  }
+
+  // Pre-kiln: work backward from kiln time
+  // Bench set + mixing happen BEFORE kiln
+  const benchHrs = steps.find(s => s.key === 'bench').hrs;
+  const mixHrs   = steps.find(s => s.key === 'mix').hrs;
+  const preKilnHrs = benchHrs + mixHrs;
+
+  const mixStartDT = new Date(kilnDT.getTime() - preKilnHrs * 3600000);
+
+  // Post-kiln: work forward from kiln time through burnout steps
+  const burnoutSteps = steps.filter(s => s.key !== 'mix' && s.key !== 'bench');
+  let cursor = new Date(kilnDT.getTime());
+  const stepTimes = {};
+
+  // Store mix and bench times
+  stepTimes['mix']   = mixStartDT;
+  stepTimes['bench'] = new Date(mixStartDT.getTime() + mixHrs * 3600000);
+
+  // Forward through kiln steps
+  for (const step of burnoutSteps) {
+    stepTimes[step.key] = new Date(cursor.getTime());
+    cursor = new Date(cursor.getTime() + step.hrs * 3600000);
+  }
+  const pourDT = cursor;
+
+  const totalBurnoutHrs = burnoutSteps.reduce((s, st) => s + st.hrs, 0);
+  const totalHrs = preKilnHrs + totalBurnoutHrs;
+
+  // ── Update key time callouts ──
+  const updateKeyTime = (valId, dateId, dt) => {
+    document.getElementById(valId).textContent  = fmtTime(dt);
+    document.getElementById(dateId).textContent = fmtDate(dt);
+  };
+  updateKeyTime('ktMix',   'ktMixDate',   mixStartDT);
+  updateKeyTime('ktKiln',  'ktKilnDate',  kilnDT);
+  updateKeyTime('ktPour',  'ktPourDate',  pourDT);
+
+  // ── Update sidebar results ──
+  const setResult = (timeId, dateId, dt) => {
+    document.getElementById(timeId).textContent = fmtTime(dt);
+    if (dateId) document.getElementById(dateId).textContent = fmtDate(dt);
+  };
+  setResult('outMixTime',  'outMixDate',  mixStartDT);
+  setResult('outKilnTime', 'outKilnDate', kilnDT);
+  setResult('outPourTime', 'outPourDate', pourDT);
+  document.getElementById('outTotalHrs').textContent =
+    `${fmtHrs(totalHrs)} mix-to-pour · ${fmtHrs(totalBurnoutHrs)} kiln`;
+
+  // ── Render step list ──
+  renderSteps(stepTimes);
+}
+
+// ── Render burnout step list ──────────────────────────────────────────────
+function renderSteps(stepTimes) {
+  const list = document.getElementById('stepList');
+  list.innerHTML = steps.map((step, i) => {
+    const startDT = stepTimes[step.key];
+    const timeStr = startDT ? fmtTime(startDT) : '—';
+    const dateStr = startDT ? fmtDate(startDT) : '';
+
+    const isKiln = step.key === 'bench'; // bench end = kiln start
+    const isMix  = step.key === 'mix';
+    const isPour = step.key === 'hold';
+
+    let timeClass = 'step-time';
+    if (isMix)  timeClass += ' mix-time';
+    if (isPour) timeClass += ' pour-time';
+
+    const tempStr = step.tempC
+      ? `${step.tempC}°C<br>${step.tempF}°F`
+      : '—';
+
+    const hrsDisplay = step.hrs < 1
+      ? `${Math.round(step.hrs * 60)}m`
+      : `${step.hrs}h`;
+
+    return `
+      <div class="step">
+        <div class="step-dot ${step.dot}"></div>
+        <div>
+          <div class="step-name">${step.name}</div>
+          <div class="step-note">${step.note}</div>
+          ${startDT ? `<div style="font-size:0.65rem;color:var(--text-3);margin-top:2px">${dateStr}</div>` : ''}
+        </div>
+        <div style="text-align:center">
+          <input class="step-dur-input" type="number" value="${step.hrs < 1 ? step.hrs.toFixed(4) : step.hrs}"
+            min="0.0833" max="24" step="${step.hrs < 1 ? '0.0833' : '0.5'}"
+            title="Edit duration (hrs)"
+            onchange="updateStepHrs(${i}, this.value)"
+            ${step.key === 'mix' ? 'disabled style="opacity:0.4"' : ''}
+          />
+          <div style="font-size:0.6rem;color:var(--text-3);margin-top:1px">hrs</div>
+        </div>
+        <div class="step-temp">${tempStr}</div>
+        <div class="${timeClass}">${timeStr}</div>
+      </div>`;
+  }).join('');
+}
+
+function updateStepHrs(idx, val) {
+  const hrs = parseFloat(val);
+  if (!isNaN(hrs) && hrs > 0) {
+    steps[idx].hrs = hrs;
+    saveSteps();
+    calculate();
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+// Set today's date as default
+const today = new Date();
+const pad = n => String(n).padStart(2,'0');
+document.getElementById('kilnDate').value =
+  `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+
+calculate();
+</script>
+</body>
+</html>
