@@ -125,9 +125,11 @@
         featuredSection.classList.add('hidden');
       }
 
-      // All tools grid
-      document.getElementById('allGrid').innerHTML = tools.map(toolCard).join('');
-      document.getElementById('allCount').textContent = `${tools.length} tools`;
+      // All tools grid — exclude pinned tools to avoid duplication
+      const pinnedIds = new Set(featured.map(t => t.id));
+      const unpinnedTools = tools.filter(t => !pinnedIds.has(t.id));
+      document.getElementById('allGrid').innerHTML = unpinnedTools.map(toolCard).join('');
+      document.getElementById('allCount').textContent = `${unpinnedTools.length} tools`;
       document.getElementById('toolCount').textContent =
         `${TOOLS.length} tools across ${Object.keys(CATEGORIES).length} categories`;
     }
