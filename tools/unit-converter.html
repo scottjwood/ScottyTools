@@ -127,7 +127,7 @@
 <script>
 Nav.init();
 
-const CATEGORIES = [
+const UNIT_CATS = [
   {
     id: 'length', label: 'Length', icon: '↔',
     groups: [
@@ -224,9 +224,9 @@ const CATEGORIES = [
   },
 ];
 
-let activeCategory = CATEGORIES[0];
+let activeCategory = UNIT_CATS[0];
 const savedCat = localStorage.getItem('uc_category');
-if (savedCat) { const f = CATEGORIES.find(c => c.id === savedCat); if (f) activeCategory = f; }
+if (savedCat) { const f = UNIT_CATS.find(c => c.id === savedCat); if (f) activeCategory = f; }
 
 function init() {
   renderCategoryTabs();
@@ -235,14 +235,14 @@ function init() {
 }
 
 function renderCategoryTabs() {
-  document.getElementById('catTabs').innerHTML = CATEGORIES.map(cat => `
+  document.getElementById('catTabs').innerHTML = UNIT_CATS.map(cat => `
     <button class="cat-tab ${cat.id === activeCategory.id ? 'active' : ''}" onclick="setCategory('${cat.id}')">
       <span>${cat.icon}</span>${cat.label}
     </button>`).join('');
 }
 
 function setCategory(id) {
-  activeCategory = CATEGORIES.find(c => c.id === id);
+  activeCategory = UNIT_CATS.find(c => c.id === id);
   localStorage.setItem('uc_category', id);
   renderCategoryTabs();
   populateFromUnit();
