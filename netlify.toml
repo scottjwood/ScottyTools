@@ -1,12 +1,11 @@
 [build]
-  command = "bash build.sh"
-  publish = "dist"
+  publish = "."
 
-# Serve tool pages cleanly
-[[redirects]]
-  from = "/tools/:page"
-  to   = "/tools/:page.html"
-  status = 200
+# Edge function — secure proxy for Ledger API calls
+# SCRIPT_URL and API_TOKEN are read server-side; never sent to browser
+[[edge_functions]]
+  path     = "/.netlify/edge-functions/ledger-api"
+  function = "ledger-api"
 
 [[headers]]
   for = "/*"
@@ -14,9 +13,3 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-
-# Never cache ledger — secrets are baked in at build time
-[[headers]]
-  for = "/tools/ledger.html"
-  [headers.values]
-    Cache-Control = "no-store"

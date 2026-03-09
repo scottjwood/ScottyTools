@@ -209,15 +209,10 @@
               <button class="l-btn l-btn-ghost" onclick="clearOverrideURLs()">Clear Saved URL & Token</button>
               <button class="l-btn l-btn-danger" onclick="clearAllData()">Clear All Data</button>
             </div>
-            <div style="margin-top:14px">
-              <div class="l-label" style="margin-bottom:6px">Script URL Override (dev)</div>
-              <input class="l-input" id="sScriptUrl" placeholder="Leave blank to use built-in"/>
+            <div style="margin-top:14px;font-size:0.78rem;color:var(--l-text-3);line-height:1.6">
+              API credentials are handled securely via Netlify Edge Functions.<br>
+              They are never exposed to the browser.
             </div>
-            <div style="margin-top:10px">
-              <div class="l-label" style="margin-bottom:6px">API Token Override (dev)</div>
-              <input class="l-input" id="sApiToken" type="password" placeholder="Leave blank to use built-in"/>
-            </div>
-            <button class="l-btn l-btn-ghost" style="margin-top:10px" onclick="saveOverrides()">Save Overrides</button>
           </div>
 
         </div>
@@ -317,12 +312,8 @@
 <script>
 Nav.init();
 
-// ── Config (injected at build time by build.sh) ────────────────────────────
-const BUILT_SCRIPT_URL = '%%SCRIPT_URL%%';
-const BUILT_API_TOKEN  = '%%API_TOKEN%%';
-
-function getScriptURL() { return localStorage.getItem('ledger_script_url') || BUILT_SCRIPT_URL; }
-function getApiToken()  { return localStorage.getItem('ledger_api_token')  || BUILT_API_TOKEN;  }
+// ── API endpoint — calls Netlify Edge Function (credentials stay server-side) ──
+const LEDGER_API_ENDPOINT = '/.netlify/edge-functions/ledger-api';
 
 // ── State ──────────────────────────────────────────────────────────────────
 let state = {
@@ -417,16 +408,12 @@ document.getElementById('pinInput').addEventListener('keydown', e => {
 // API LAYER
 // ═══════════════════════════════════════════════════════════
 async function api(action, payload) {
-  const SCRIPT_URL = getScriptURL();
-  if (!SCRIPT_URL || SCRIPT_URL === '%%SCRIPT_URL%%') {
-    throw new Error('Script URL not configured. Add it in Settings.');
-  }
-  const url = SCRIPT_URL + '?' + new URLSearchParams({
+  // Calls the Netlify Edge Function — credentials are injected server-side
+  const url = LEDGER_API_ENDPOINT + '?' + new URLSearchParams({
     action,
     payload: JSON.stringify(payload),
-    token: getApiToken(),
   });
-  const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+  const res = await fetch(url, { method: 'GET' });
   const json = await res.json();
   if (json.ok === false) throw new Error(json.error || 'API error');
   return json;
@@ -1109,10 +1096,6 @@ function toggleInv(id) {
 function renderSettings() {
   document.getElementById('sRate').value = state.rate;
 
-  // Override fields
-  document.getElementById('sScriptUrl').value = localStorage.getItem('ledger_script_url') || '';
-  document.getElementById('sApiToken').value  = localStorage.getItem('ledger_api_token')  || '';
-
   // Client table
   renderClientTable();
 }
@@ -1186,22 +1169,9 @@ async function removeClient(idx) {
   catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
 }
 
-function saveOverrides() {
-  const url = document.getElementById('sScriptUrl').value.trim();
-  const tok = document.getElementById('sApiToken').value.trim();
-  if (url) localStorage.setItem('ledger_script_url', url);
-  else localStorage.removeItem('ledger_script_url');
-  if (tok) localStorage.setItem('ledger_api_token', tok);
-  else localStorage.removeItem('ledger_api_token');
-  toast('Overrides saved. Reload to apply.', 'success');
-}
-
 function clearOverrideURLs() {
-  localStorage.removeItem('ledger_script_url');
-  localStorage.removeItem('ledger_api_token');
-  document.getElementById('sScriptUrl').value = '';
-  document.getElementById('sApiToken').value  = '';
-  toast('Cleared saved URL & Token.', 'success');
+  // No-op — credentials now handled by edge function
+  toast('Credentials are managed server-side via Netlify.', 'success');
 }
 
 function exportJSON() {
