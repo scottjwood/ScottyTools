@@ -1,6 +1,5 @@
 [build]
-  base    = "scottytools"
-  publish = "scottytools"
+  publish = "."
 
 # Edge function — secure proxy for Ledger API calls
 [[edge_functions]]
