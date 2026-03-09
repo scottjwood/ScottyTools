@@ -11,17 +11,7 @@
 <!-- ScottyTools nav -->
 <div id="nav-placeholder"></div>
 
-<!-- Lock screen -->
-<div class="l-lock-screen" id="lockScreen">
-  <div class="l-lock-logo">LEDGER</div>
-  <div class="l-lock-sub">Enter PIN to unlock</div>
-  <input class="l-pin-input" id="pinInput" type="password" inputmode="numeric"
-    maxlength="10" placeholder="••••" autocomplete="off"
-    onkeydown="if(event.key==='Enter') attemptUnlock()"/>
-  <button class="l-btn l-btn-primary" id="unlockBtn" onclick="attemptUnlock()" style="width:200px">Unlock</button>
-  <div class="l-pin-error" id="pinError"></div>
-  <div class="l-pin-debug" id="pinDebug"></div>
-</div>
+<!-- Auth handled by Auth.requireAuth() in JS -->
 
 <!-- Main app (hidden until unlocked) -->
 <div class="ledger-root" id="ledgerApp" style="display:none">
@@ -40,7 +30,7 @@
         <div class="l-conn-dot" id="connDot"></div>
         <span class="l-conn-badge" id="connBadge"></span>
       </div>
-      <button class="l-lock-btn" onclick="lockApp()">🔒 Lock</button>
+      <button class="l-lock-btn" onclick="Auth.signOut()">Sign Out</button>
     </div>
   </div>
 
@@ -176,18 +166,13 @@
             <button class="l-btn l-btn-primary" style="margin-top:12px;width:100%" onclick="saveRate()">Save Rate</button>
           </div>
 
-          <!-- PIN -->
+          <!-- Auth info -->
           <div class="l-settings-card">
-            <h3>Security PIN</h3>
-            <div class="l-field">
-              <div class="l-label">New PIN</div>
-              <input class="l-input" id="sNewPin" type="password" inputmode="numeric" maxlength="10"/>
+            <h3>Authentication</h3>
+            <div style="font-size:0.82rem;color:var(--l-text-2);line-height:1.6" id="authInfoCard">
+              Signed in via Google
             </div>
-            <div class="l-field" style="margin-top:10px">
-              <div class="l-label">Confirm PIN</div>
-              <input class="l-input" id="sConfirmPin" type="password" inputmode="numeric" maxlength="10"/>
-            </div>
-            <button class="l-btn l-btn-primary" style="margin-top:12px;width:100%" onclick="savePin()">Update PIN</button>
+            <button class="l-btn l-btn-ghost" style="margin-top:12px;width:100%" onclick="Auth.signOut()">Sign Out</button>
           </div>
 
           <!-- Clients -->
@@ -307,6 +292,7 @@
 <!-- ══════════════════════════════════════════════════════════════
      SCRIPTS
 ══════════════════════════════════════════════════════════════ -->
+<script src="../js/auth.js"></script>
 <script src="../js/tools-registry.js"></script>
 <script src="../js/nav.js"></script>
 <script>
@@ -317,7 +303,6 @@ const LEDGER_API_ENDPOINT = '/.netlify/edge-functions/ledger-api';
 
 // ── State ──────────────────────────────────────────────────────────────────
 let state = {
-  pin: '1234',
   rate: 75,
   clients: [],
   pending: [],
@@ -333,83 +318,14 @@ let calViewDate   = new Date();
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 // ═══════════════════════════════════════════════════════════
-// LOCK SCREEN
+// AUTH — Google sign-in replaces PIN
 // ═══════════════════════════════════════════════════════════
-async function attemptUnlock() {
-  const pin = document.getElementById('pinInput').value.trim();
-  if (!pin) return;
-  const btn = document.getElementById('unlockBtn');
-  btn.textContent = 'Checking…';
-  btn.disabled = true;
-
-  let verified = false;
-  let source = 'sheets';
-
-  try {
-    const result = await api('loadAll', {});
-    const sheetPin = result.pin ? String(result.pin).trim() : null;
-    if (sheetPin) {
-      localStorage.setItem('ledger_pin', sheetPin);
-      verified = (pin === sheetPin);
-    } else {
-      throw new Error('no pin in response');
-    }
-  } catch (e) {
-    // Fallback to cached PIN
-    const cached = localStorage.getItem('ledger_pin');
-    source = 'cache';
-    if (cached) {
-      verified = (pin === cached);
-    } else {
-      // No cache — allow default
-      verified = (pin === state.pin);
-      source = 'default';
-    }
-    document.getElementById('pinDebug').textContent =
-      `Using cached/default PIN (Sheets unreachable: ${e.message})`;
+Auth.requireAuth();
+Auth.onReady((user) => {
+  if (user) {
+    document.getElementById('ledgerApp').style.display = 'block';
+    loadAll();
   }
-
-  if (verified) {
-    sessionStorage.setItem('ledger_unlocked', '1');
-    document.getElementById('lockScreen').style.display = 'none';
-    document.getElementById('ledgerApp').style.display  = 'block';
-    document.getElementById('pinDebug').textContent = '';
-    // If we successfully called loadAll during PIN verification, use that data
-    // Otherwise call loadAll fresh (e.g. fallback to cache path)
-    if (source === 'sheets') {
-      try {
-        const cached = localStorage.getItem('ledger_cache');
-        // We already fetched during PIN check — trigger a fresh full load
-      } catch {}
-    }
-    await loadAll();
-  } else {
-    const input = document.getElementById('pinInput');
-    document.getElementById('pinError').textContent =
-      `Incorrect PIN. (verified via ${source})`;
-    input.classList.add('shake');
-    input.value = '';
-    setTimeout(() => input.classList.remove('shake'), 500);
-  }
-  btn.textContent = 'Unlock';
-  btn.disabled = false;
-}
-
-function lockApp() {
-  sessionStorage.removeItem('ledger_unlocked');
-  document.getElementById('lockScreen').style.display = 'flex';
-  document.getElementById('ledgerApp').style.display  = 'none';
-  document.getElementById('pinInput').value = '';
-  document.getElementById('pinError').textContent = '';
-}
-
-// Check if already unlocked this session
-if (sessionStorage.getItem('ledger_unlocked')) {
-  document.getElementById('lockScreen').style.display = 'none';
-  document.getElementById('ledgerApp').style.display  = 'block';
-}
-document.getElementById('pinInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') attemptUnlock();
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -1147,19 +1063,7 @@ async function saveRate() {
   catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
 }
 
-async function savePin() {
-  const np = document.getElementById('sNewPin').value.trim();
-  const cp = document.getElementById('sConfirmPin').value.trim();
-  if (!np) return toast('Enter a new PIN.', 'error');
-  if (np !== cp) return toast('PINs do not match.', 'error');
-  state.pin = np;
-  localStorage.setItem('ledger_pin', np);
-  document.getElementById('sNewPin').value = '';
-  document.getElementById('sConfirmPin').value = '';
-  toast('PIN updated.', 'success');
-  try { await apiWrite('saveSettings', { rate: state.rate, clients: state.clients, pin: np }); }
-  catch(e) { if (e.message !== 'offline-queued') toast('Sync failed.', 'error'); }
-}
+// savePin removed — auth handled by Google
 
 async function addClient() {
   const name = document.getElementById('newClientName').value.trim();
@@ -1266,8 +1170,7 @@ function toast(msg, type = '') {
   setTimeout(() => el.remove(), 3200);
 }
 
-// ── Init on page load ─────────────────────────────────────────────────────
-if (sessionStorage.getItem('ledger_unlocked')) loadAll();
+// ── Init triggered by Auth.onReady above ──────────────────────────────────
 </script>
 </body>
 </html>
