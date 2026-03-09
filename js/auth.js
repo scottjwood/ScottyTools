@@ -85,8 +85,9 @@ const Auth = (() => {
   }
 
   function fireReady() {
-    _readyCallbacks.forEach(fn => fn(_user));
-    _readyCallbacks = [];
+    const cbs = _readyCallbacks || [];
+    _readyCallbacks = null;
+    cbs.forEach(fn => fn(_user));
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -137,7 +138,6 @@ const Auth = (() => {
   function _initGIS(onSignIn) {
     if (!CLIENT_ID || CLIENT_ID.length < 10) {
       console.warn('Auth: CLIENT_ID not configured.');
-      _readyCallbacks = null;
       fireReady();
       return;
     }
@@ -166,7 +166,6 @@ const Auth = (() => {
           picture: userInfo.picture,
         };
         saveSession(response.access_token, response.expires_in, user);
-        _readyCallbacks = null;
         fireReady();
         if (onSignIn) onSignIn(user);
       },
@@ -174,11 +173,9 @@ const Auth = (() => {
 
     // If we have a valid cached session, fire ready immediately
     if (loadSession()) {
-      _readyCallbacks = null;
       fireReady();
     } else {
       // No valid session — fire ready with null (page decides what to do)
-      _readyCallbacks = null;
       fireReady();
     }
   }
