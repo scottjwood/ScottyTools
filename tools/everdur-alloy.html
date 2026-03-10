@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Everdur Alloy Calculator — ScottyTools</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png"/>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    .tool-page { padding-top: var(--nav-h); min-height: 100vh; }
+    .tool-container { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    .tool-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-dim); text-decoration: none; transition: color 150ms;
+      margin-bottom: 16px;
+    }
+    .tool-back:hover { color: var(--accent); }
+
+    .tool-title {
+      font-family: var(--cond); font-size: 2rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase; line-height: 1;
+      margin-bottom: 6px;
+    }
+    .tool-title span { color: var(--accent); }
+    .tool-sub { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 32px; }
+
+    /* ── Preset tabs ─────────────────────────────────────────────── */
+    .preset-row {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px;
+    }
+    .preset-btn {
+      font-family: var(--cond); font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      background: var(--bg-1); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text-dim);
+      padding: 7px 14px; cursor: pointer; transition: all 150ms;
+    }
+    .preset-btn:hover { border-color: var(--border-hi); color: var(--text); }
+    .preset-btn.active {
+      background: rgba(232,160,32,0.1);
+      border-color: rgba(232,160,32,0.4);
+      color: var(--accent);
+    }
+    .preset-tag {
+      font-family: var(--mono); font-size: 0.6rem;
+      background: rgba(232,160,32,0.15); color: var(--accent);
+      border-radius: 3px; padding: 1px 5px; margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* ── Input card ──────────────────────────────────────────────── */
+    .input-card {
+      background: var(--bg-1); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin-bottom: 20px;
+    }
+    .input-card-header {
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      background: var(--bg); display: flex; align-items: center;
+      gap: 8px;
+    }
+    .input-card-title {
+      font-family: var(--cond); font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim);
+    }
+    .input-card-body { padding: 20px; }
+
+    /* ── Copper input ────────────────────────────────────────────── */
+    .copper-row {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .copper-input-wrap {
+      display: flex; align-items: center; gap: 0;
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      transition: border-color 150ms;
+    }
+    .copper-input-wrap:focus-within { border-color: var(--accent-dim); }
+    .copper-input {
+      background: none; border: none; outline: none;
+      font-family: var(--mono); font-size: 1.4rem; font-weight: 500;
+      color: var(--text); padding: 10px 14px;
+      width: 160px; text-align: right;
+    }
+    .copper-unit {
+      font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim);
+      padding: 0 14px 0 4px;
+    }
+    .unit-toggle {
+      display: flex; gap: 4px;
+    }
+    .unit-btn {
+      font-family: var(--mono); font-size: 0.72rem;
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text-dim);
+      padding: 6px 10px; cursor: pointer; transition: all 150ms;
+    }
+    .unit-btn.active {
+      background: rgba(232,160,32,0.1);
+      border-color: rgba(232,160,32,0.35);
+      color: var(--accent);
+    }
+
+    /* ── Target percentages ──────────────────────────────────────── */
+    .pct-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      margin-top: 16px;
+    }
+    .pct-group { display: flex; flex-direction: column; gap: 6px; }
+    .pct-label {
+      font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .pct-input-wrap {
+      display: flex; align-items: center;
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      transition: border-color 150ms;
+    }
+    .pct-input-wrap:focus-within { border-color: var(--accent-dim); }
+    .pct-input {
+      background: none; border: none; outline: none;
+      font-family: var(--mono); font-size: 0.95rem;
+      color: var(--text); padding: 8px 10px;
+      width: 100%; text-align: right;
+    }
+    .pct-suffix {
+      font-family: var(--mono); font-size: 0.75rem;
+      color: var(--text-dim); padding: 0 10px 0 4px;
+    }
+    .pct-note { font-size: 0.68rem; color: var(--text-faint); line-height: 1.4; }
+
+    /* ── Pct total indicator ─────────────────────────────────────── */
+    .pct-total-row {
+      display: flex; align-items: center; gap: 8px; margin-top: 14px;
+    }
+    .pct-total-bar-track {
+      flex: 1; height: 4px; background: rgba(255,255,255,0.06);
+      border-radius: 2px; overflow: hidden;
+    }
+    .pct-total-bar-fill {
+      height: 100%; border-radius: 2px;
+      background: var(--accent); transition: width 200ms, background 200ms;
+    }
+    .pct-total-label {
+      font-family: var(--mono); font-size: 0.7rem; color: var(--text-dim);
+      min-width: 80px; text-align: right;
+    }
+    .pct-total-label.ok     { color: #4ade80; }
+    .pct-total-label.over   { color: #f87171; }
+
+    /* ── Results ─────────────────────────────────────────────────── */
+    .results-card {
+      background: var(--bg-1); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin-bottom: 20px;
+    }
+    .results-header {
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      background: var(--bg); display: flex; align-items: center;
+      justify-content: space-between;
+    }
+    .results-title {
+      font-family: var(--cond); font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim);
+    }
+    .copy-btn {
+      font-family: var(--mono); font-size: 0.68rem;
+      background: none; border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text-dim);
+      padding: 3px 10px; cursor: pointer; transition: all 150ms;
+    }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.ok    { border-color: #4ade80; color: #4ade80; }
+
+    .result-rows { padding: 8px 0; }
+    .result-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 110px 110px;
+      align-items: center; gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 100ms;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-row:hover { background: rgba(255,255,255,0.02); }
+
+    .result-swatch {
+      width: 14px; height: 14px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .result-element {
+      font-family: var(--cond); font-size: 1rem; font-weight: 600;
+      letter-spacing: 0.04em; color: var(--text);
+    }
+    .result-element-sub {
+      font-family: var(--mono); font-size: 0.65rem; color: var(--text-dim);
+      margin-top: 2px;
+    }
+    .result-pct {
+      font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim);
+      text-align: right;
+    }
+    .result-weight {
+      font-family: var(--mono); font-size: 1.05rem; font-weight: 500;
+      color: var(--accent); text-align: right;
+    }
+    .result-weight-sub {
+      font-family: var(--mono); font-size: 0.65rem; color: var(--text-dim);
+      text-align: right; margin-top: 2px;
+    }
+
+    /* Total row */
+    .result-row.total {
+      background: rgba(232,160,32,0.04);
+      border-top: 1px solid rgba(232,160,32,0.15);
+      border-bottom: none;
+    }
+    .result-row.total .result-element { color: var(--accent); }
+    .result-row.total .result-weight  { font-size: 1.2rem; }
+
+    /* ── Bar chart ───────────────────────────────────────────────── */
+    .bar-section { padding: 16px 20px; border-top: 1px solid var(--border); }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .bar-row:last-child { margin-bottom: 0; }
+    .bar-label { font-family: var(--mono); font-size: 0.68rem; color: var(--text-dim); width: 80px; }
+    .bar-track {
+      flex: 1; height: 8px; background: rgba(255,255,255,0.05);
+      border-radius: 4px; overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 250ms ease; }
+    .bar-val { font-family: var(--mono); font-size: 0.68rem; color: var(--text-dim); width: 48px; text-align: right; }
+
+    /* ── Warning ─────────────────────────────────────────────────── */
+    .warn-box {
+      background: rgba(251,146,60,0.07); border: 1px solid rgba(251,146,60,0.25);
+      border-radius: 8px; padding: 12px 16px;
+      font-size: 0.78rem; color: #fb923c; line-height: 1.5;
+      margin-bottom: 16px; display: none;
+    }
+    .warn-box.visible { display: block; }
+
+    /* ── Empty state ─────────────────────────────────────────────── */
+    .empty-state {
+      padding: 40px 20px; text-align: center;
+      font-size: 0.82rem; color: var(--text-faint);
+    }
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+
+<div class="tool-page">
+  <div class="tool-container">
+    <a href="../index.html" class="tool-back">← ScottyTools</a>
+    <div class="tool-title">Everdur <span>Alloy</span> Calculator</div>
+    <div class="tool-sub">Enter your copper charge weight — get exact silicon and manganese additions for a target Everdur composition.</div>
+
+    <!-- Presets -->
+    <div class="preset-row" id="presetRow">
+      <button class="preset-btn active" data-preset="casting" onclick="applyPreset('casting')">
+        CDA 873 — Casting <span class="preset-tag">95-4-1</span>
+      </button>
+      <button class="preset-btn" data-preset="wrought" onclick="applyPreset('wrought')">
+        C65500 — Wrought <span class="preset-tag">96-3-1</span>
+      </button>
+      <button class="preset-btn" data-preset="custom" onclick="applyPreset('custom')">
+        Custom
+      </button>
+    </div>
+
+    <!-- Input card -->
+    <div class="input-card">
+      <div class="input-card-header">
+        <span class="input-card-title">⬟ Copper Charge</span>
+      </div>
+      <div class="input-card-body">
+        <div class="copper-row">
+          <div class="copper-input-wrap">
+            <input class="copper-input" id="copperWeight" type="number"
+              min="0" step="0.1" placeholder="0.0"
+              oninput="calculate()"/>
+            <span class="copper-unit" id="copperUnitLabel">oz</span>
+          </div>
+          <div class="unit-toggle">
+            <button class="unit-btn active" id="unitOz" onclick="setUnit('oz')">oz</button>
+            <button class="unit-btn" id="unitLb" onclick="setUnit('lb')">lb</button>
+            <button class="unit-btn" id="unitG"  onclick="setUnit('g')">g</button>
+            <button class="unit-btn" id="unitKg" onclick="setUnit('kg')">kg</button>
+          </div>
+        </div>
+
+        <!-- Target % -->
+        <div class="pct-grid" id="pctGrid">
+          <div class="pct-group">
+            <div class="pct-label">Copper %</div>
+            <div class="pct-input-wrap">
+              <input class="pct-input" id="pctCu" type="number"
+                min="0" max="100" step="0.1" value="95"
+                oninput="onPctChange('cu')" readonly/>
+              <span class="pct-suffix">%</span>
+            </div>
+            <div class="pct-note" id="cuNote">Remainder after Si + Mn</div>
+          </div>
+          <div class="pct-group">
+            <div class="pct-label">Silicon %</div>
+            <div class="pct-input-wrap">
+              <input class="pct-input" id="pctSi" type="number"
+                min="0" max="10" step="0.1" value="4"
+                oninput="onPctChange('si')"/>
+              <span class="pct-suffix">%</span>
+            </div>
+            <div class="pct-note">Target: 3–4%</div>
+          </div>
+          <div class="pct-group">
+            <div class="pct-label">Manganese %</div>
+            <div class="pct-input-wrap">
+              <input class="pct-input" id="pctMn" type="number"
+                min="0" max="10" step="0.1" value="1"
+                oninput="onPctChange('mn')"/>
+              <span class="pct-suffix">%</span>
+            </div>
+            <div class="pct-note">Target: 1%</div>
+          </div>
+        </div>
+
+        <div class="pct-total-row">
+          <div class="pct-total-bar-track">
+            <div class="pct-total-bar-fill" id="pctBar" style="width:100%"></div>
+          </div>
+          <div class="pct-total-label ok" id="pctTotalLabel">100.0% ✓</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Warning -->
+    <div class="warn-box" id="warnBox"></div>
+
+    <!-- Results -->
+    <div class="results-card" id="resultsCard">
+      <div class="results-header">
+        <span class="results-title">⬡ Charge Weights</span>
+        <button class="copy-btn" id="copyBtn" onclick="copyResults()">Copy</button>
+      </div>
+      <div class="result-rows" id="resultRows">
+        <div class="empty-state">Enter a copper weight above to calculate.</div>
+      </div>
+      <div class="bar-section" id="barSection" style="display:none">
+        <div class="bar-row">
+          <span class="bar-label">Copper</span>
+          <div class="bar-track"><div class="bar-fill" id="barCu" style="background:#b87333"></div></div>
+          <span class="bar-val" id="barCuVal"></span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Silicon</span>
+          <div class="bar-track"><div class="bar-fill" id="barSi" style="background:#5b9cf6"></div></div>
+          <span class="bar-val" id="barSiVal"></span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Manganese</span>
+          <div class="bar-track"><div class="bar-fill" id="barMn" style="background:#a78bfa"></div></div>
+          <span class="bar-val" id="barMnVal"></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/tools-registry.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.init();
+
+// ══════════════════════════════════════════════════════════════
+// PRESETS
+// ══════════════════════════════════════════════════════════════
+const PRESETS = {
+  casting: { cu: 95, si: 4,  mn: 1,  label: 'CDA 873 Casting (95-4-1)' },
+  wrought: { cu: 96, si: 3,  mn: 1,  label: 'C65500 Wrought (96-3-1)'  },
+  custom:  { cu: null, si: null, mn: null, label: 'Custom'               },
+};
+
+let currentPreset = 'casting';
+let currentUnit   = 'oz';
+
+// Unit conversion to grams
+const TO_GRAMS = { oz: 28.3495, lb: 453.592, g: 1, kg: 1000 };
+const UNIT_DECIMALS = { oz: 3, lb: 4, g: 1, kg: 4 };
+
+function applyPreset(key) {
+  currentPreset = key;
+  document.querySelectorAll('.preset-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.preset === key));
+
+  const p = PRESETS[key];
+  const cuInput = document.getElementById('pctCu');
+  const siInput = document.getElementById('pctSi');
+  const mnInput = document.getElementById('pctMn');
+
+  if (key === 'custom') {
+    cuInput.removeAttribute('readonly');
+    siInput.removeAttribute('readonly');
+    mnInput.removeAttribute('readonly');
+  } else {
+    cuInput.setAttribute('readonly', '');
+    siInput.removeAttribute('readonly');
+    mnInput.removeAttribute('readonly');
+    siInput.value = p.si;
+    mnInput.value = p.mn;
+    updateCuFromRemainder();
+  }
+  calculate();
+}
+
+function onPctChange(changed) {
+  if (currentPreset !== 'custom') {
+    // For non-custom, copper is always the remainder
+    updateCuFromRemainder();
+  }
+  updatePctBar();
+  calculate();
+}
+
+function updateCuFromRemainder() {
+  const si = parseFloat(document.getElementById('pctSi').value) || 0;
+  const mn = parseFloat(document.getElementById('pctMn').value) || 0;
+  const cu = Math.max(0, 100 - si - mn);
+  document.getElementById('pctCu').value = cu.toFixed(1);
+  updatePctBar();
+}
+
+function updatePctBar() {
+  const cu  = parseFloat(document.getElementById('pctCu').value) || 0;
+  const si  = parseFloat(document.getElementById('pctSi').value) || 0;
+  const mn  = parseFloat(document.getElementById('pctMn').value) || 0;
+  const tot = cu + si + mn;
+  const bar = document.getElementById('pctBar');
+  const lbl = document.getElementById('pctTotalLabel');
+  const pct = Math.min(tot, 100);
+  bar.style.width = pct + '%';
+  const isOk = Math.abs(tot - 100) < 0.05;
+  bar.style.background = isOk ? '#4ade80' : tot > 100 ? '#f87171' : 'var(--accent)';
+  lbl.textContent = tot.toFixed(1) + '% ' + (isOk ? '✓' : tot > 100 ? '↑ over' : '↓ under');
+  lbl.className = 'pct-total-label ' + (isOk ? 'ok' : tot > 100 ? 'over' : '');
+}
+
+// ══════════════════════════════════════════════════════════════
+// UNIT TOGGLE
+// ══════════════════════════════════════════════════════════════
+function setUnit(unit) {
+  // Convert current copper value to new unit
+  const oldVal = parseFloat(document.getElementById('copperWeight').value) || 0;
+  const grams  = oldVal * TO_GRAMS[currentUnit];
+  currentUnit  = unit;
+  document.querySelectorAll('.unit-btn').forEach(b =>
+    b.classList.toggle('active', b.id === 'unit' + unit.charAt(0).toUpperCase() + unit.slice(1)));
+  document.getElementById('copperUnitLabel').textContent = unit;
+  const newVal = grams / TO_GRAMS[unit];
+  document.getElementById('copperWeight').value =
+    newVal > 0 ? newVal.toFixed(UNIT_DECIMALS[unit]) : '';
+  calculate();
+}
+
+// ══════════════════════════════════════════════════════════════
+// CALCULATE
+// ══════════════════════════════════════════════════════════════
+function calculate() {
+  const rawVal = parseFloat(document.getElementById('copperWeight').value);
+  const cuPct  = parseFloat(document.getElementById('pctCu').value) || 0;
+  const siPct  = parseFloat(document.getElementById('pctSi').value) || 0;
+  const mnPct  = parseFloat(document.getElementById('pctMn').value) || 0;
+  const total  = cuPct + siPct + mnPct;
+
+  updatePctBar();
+
+  const warn = document.getElementById('warnBox');
+
+  // Validate percentages
+  if (Math.abs(total - 100) > 0.1) {
+    warn.textContent = `⚠ Percentages sum to ${total.toFixed(1)}% — they must add up to 100% before calculating.`;
+    warn.classList.add('visible');
+    document.getElementById('resultRows').innerHTML = '<div class="empty-state">Fix percentages above to calculate.</div>';
+    document.getElementById('barSection').style.display = 'none';
+    return;
+  }
+  warn.classList.remove('visible');
+
+  if (!rawVal || rawVal <= 0) {
+    document.getElementById('resultRows').innerHTML = '<div class="empty-state">Enter a copper weight above to calculate.</div>';
+    document.getElementById('barSection').style.display = 'none';
+    return;
+  }
+
+  // Convert copper weight to grams for math, then back to display unit
+  const cuGrams = rawVal * TO_GRAMS[currentUnit];
+
+  // The copper weight IS the copper portion of the alloy
+  // Total charge = cuGrams / (cuPct/100)
+  const totalGrams = cuGrams / (cuPct / 100);
+  const siGrams    = totalGrams * (siPct / 100);
+  const mnGrams    = totalGrams * (mnPct / 100);
+
+  const dec = UNIT_DECIMALS[currentUnit];
+
+  function toUnit(g)    { return (g / TO_GRAMS[currentUnit]).toFixed(dec); }
+  function toUnitLbl(g) { return toUnit(g) + ' ' + currentUnit; }
+  // Always show grams as secondary unit
+  function toGLbl(g)    { return g.toFixed(1) + ' g'; }
+
+  const rows = [
+    { label: 'Copper',    sub: 'Cu', pct: cuPct, grams: cuGrams,    color: '#b87333' },
+    { label: 'Silicon',   sub: 'Si', pct: siPct, grams: siGrams,    color: '#5b9cf6' },
+    { label: 'Manganese', sub: 'Mn', pct: mnPct, grams: mnGrams,    color: '#a78bfa' },
+    { label: 'TOTAL',     sub: '',   pct: 100,   grams: totalGrams, color: null, isTotal: true },
+  ];
+
+  document.getElementById('resultRows').innerHTML = rows.map(r => `
+    <div class="result-row ${r.isTotal ? 'total' : ''}">
+      <div class="result-swatch" style="background:${r.color || 'transparent'};
+        ${r.isTotal ? 'border:1px solid var(--accent);border-radius:3px;' : ''}"></div>
+      <div>
+        <div class="result-element">${r.label}</div>
+        ${r.sub ? `<div class="result-element-sub">${r.sub}</div>` : ''}
+      </div>
+      <div>
+        <div class="result-pct">${r.pct.toFixed(1)}%</div>
+      </div>
+      <div>
+        <div class="result-weight">${toUnitLbl(r.grams)}</div>
+        ${currentUnit !== 'g' ? `<div class="result-weight-sub">${toGLbl(r.grams)}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  // Bar chart
+  document.getElementById('barSection').style.display = '';
+  document.getElementById('barCu').style.width = cuPct + '%';
+  document.getElementById('barSi').style.width = (siPct / cuPct * 100) + '%';
+  document.getElementById('barMn').style.width = (mnPct / cuPct * 100) + '%';
+  document.getElementById('barCuVal').textContent = cuPct.toFixed(1) + '%';
+  document.getElementById('barSiVal').textContent = siPct.toFixed(1) + '%';
+  document.getElementById('barMnVal').textContent = mnPct.toFixed(1) + '%';
+}
+
+// ══════════════════════════════════════════════════════════════
+// COPY
+// ══════════════════════════════════════════════════════════════
+function copyResults() {
+  const rawVal = parseFloat(document.getElementById('copperWeight').value);
+  if (!rawVal) return;
+
+  const cuPct = parseFloat(document.getElementById('pctCu').value) || 0;
+  const siPct = parseFloat(document.getElementById('pctSi').value) || 0;
+  const mnPct = parseFloat(document.getElementById('pctMn').value) || 0;
+  const cuGrams    = rawVal * TO_GRAMS[currentUnit];
+  const totalGrams = cuGrams / (cuPct / 100);
+  const siGrams    = totalGrams * (siPct / 100);
+  const mnGrams    = totalGrams * (mnPct / 100);
+  const dec = UNIT_DECIMALS[currentUnit];
+  function toUnit(g) { return (g / TO_GRAMS[currentUnit]).toFixed(dec); }
+
+  const presetLabel = PRESETS[currentPreset]?.label || 'Custom';
+  const lines = [
+    `EVERDUR ALLOY CHARGE — ${presetLabel}`,
+    `─────────────────────────────────────`,
+    `Copper     ${cuPct.toFixed(1)}%   ${toUnit(cuGrams)} ${currentUnit}  (${cuGrams.toFixed(1)} g)`,
+    `Silicon    ${siPct.toFixed(1)}%   ${toUnit(siGrams)} ${currentUnit}  (${siGrams.toFixed(1)} g)`,
+    `Manganese  ${mnPct.toFixed(1)}%   ${toUnit(mnGrams)} ${currentUnit}  (${mnGrams.toFixed(1)} g)`,
+    `─────────────────────────────────────`,
+    `TOTAL      100%  ${toUnit(totalGrams)} ${currentUnit}  (${totalGrams.toFixed(1)} g)`,
+  ];
+
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 2000);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+applyPreset('casting');
+</script>
+</body>
+</html>
