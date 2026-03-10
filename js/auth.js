@@ -99,15 +99,58 @@ const Auth = (() => {
   /** Silently refresh the access token without any UI prompt */
   function silentRefresh() {
     if (!_tokenClient) return;
-    _tokenClient.requestAccessToken({ prompt: '' });
+    // NOTE: We do NOT call requestAccessToken here automatically.
+    // Doing so can trigger a full popup window in the background.
+    // Instead we let the token expire and show a passive re-auth nudge.
+    _token = null;
+    localStorage.removeItem(KEY_TOKEN);
+    localStorage.removeItem(KEY_EXPIRY);
+    if (sessionValid()) {
+      _showReauthBanner();
+    }
   }
 
   function scheduleRefresh(expiryMs) {
     clearTimeout(_refreshTimer);
-    const msUntilRefresh = expiryMs - Date.now() - 2 * 60 * 1000; // 2 min early
-    if (msUntilRefresh > 0) {
-      _refreshTimer = setTimeout(silentRefresh, msUntilRefresh);
+    const msUntilExpiry = expiryMs - Date.now();
+    if (msUntilExpiry > 0) {
+      // When token expires, clear it and show a gentle nudge — don't popup
+      _refreshTimer = setTimeout(silentRefresh, msUntilExpiry);
     }
+  }
+
+  /** Small non-blocking banner at the top of the page asking user to click re-auth */
+  function _showReauthBanner() {
+    if (document.getElementById('reauth-banner')) return; // already shown
+    const banner = document.createElement('div');
+    banner.id = 'reauth-banner';
+    banner.style.cssText = `
+      position:fixed; top:var(--nav-h, 52px); left:0; right:0; z-index:1000;
+      background:#1a1c1e; border-bottom:1px solid rgba(232,160,32,0.3);
+      display:flex; align-items:center; justify-content:center; gap:12px;
+      padding:8px 16px; font-family:'DM Mono',monospace; font-size:0.75rem;
+      color:#7a8585;
+    `;
+    banner.innerHTML = `
+      <span>Session expired —</span>
+      <button id="reauth-btn" style="
+        background:rgba(232,160,32,0.12); border:1px solid rgba(232,160,32,0.35);
+        border-radius:5px; color:#e8a020; font-family:'DM Mono',monospace;
+        font-size:0.75rem; padding:4px 12px; cursor:pointer;
+      ">Click to continue</button>
+      <button id="reauth-dismiss" style="
+        background:none; border:none; color:#404848;
+        font-size:0.9rem; cursor:pointer; padding:2px 6px;
+      ">✕</button>
+    `;
+    document.body.appendChild(banner);
+    document.getElementById('reauth-btn').addEventListener('click', () => {
+      banner.remove();
+      _tokenClient.requestAccessToken({ prompt: '' });
+    });
+    document.getElementById('reauth-dismiss').addEventListener('click', () => {
+      banner.remove();
+    });
   }
 
   async function fetchUserInfo(token) {
@@ -231,11 +274,10 @@ const Auth = (() => {
       scheduleRefresh(expiry);
       fireReady();
     } else if (_user && sessionValid()) {
-      // User known, token expired, but within 30-day window — silent refresh
-      // Fire ready immediately with the user object so the page doesn't hang
+      // User known, token expired, but within 30-day window —
+      // fire ready with user so page loads, show reauth banner
       fireReady();
-      // Small delay to let GIS fully initialize before requesting token
-      setTimeout(silentRefresh, 100);
+      _showReauthBanner();
     } else {
       // No session or session older than 30 days — require sign-in
       clearSession();
