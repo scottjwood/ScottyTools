@@ -81,6 +81,21 @@ API keys NEVER appear in your frontend code.
 
 ---
 
+## Local Development
+
+See [DEV.md](DEV.md) for the full local dev setup. Short version:
+
+```bash
+netlify link      # one-time: link to the Netlify project (pulls env vars automatically)
+bash dev.sh       # every session: builds + serves at http://localhost:8888
+```
+
+> **OAuth note (future):** When the auth system is extended to support localhost,
+> add `http://localhost:8888/.netlify/edge-functions/auth-callback` as an
+> authorized redirect URI in the Google Cloud Console OAuth client settings.
+
+---
+
 ## Planned Tools (Ideas)
 
 ### Digital Tools

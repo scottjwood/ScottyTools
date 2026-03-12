@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netlify --version)",
+      "Bash(ls \"c:/Users/scott/Documents/DEV/ScottyTools/\"*.env*)",
+      "Bash(ls \"c:/Users/scott/Documents/DEV/ScottyTools/\"*.toml)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

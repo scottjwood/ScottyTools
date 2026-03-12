@@ -2,6 +2,17 @@
   command = "bash build.sh"
   publish = "dist"
 
+# ── Local development ─────────────────────────────────────────────────────────
+# `netlify dev` loads env vars from the linked Netlify site, then runs
+# dev-serve.sh which: (1) calls build.sh so %%placeholders%% get replaced,
+# then (2) starts a static server on port 3000 that netlify dev proxies.
+# Edge functions are served automatically by netlify dev on the same port 8888.
+[dev]
+  command    = "bash dev-serve.sh"
+  targetPort = 3000
+  port       = 8888
+  autoLaunch = false
+
 [build.environment]
   SECRETS_SCAN_OMIT_PATHS = "dist/js/auth.js"
 
