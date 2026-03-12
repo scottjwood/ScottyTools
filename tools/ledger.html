@@ -47,7 +47,7 @@
       <!-- Client -->
       <div class="l-field">
         <div class="l-label">Client</div>
-        <select class="l-select" id="fClient" onchange="updatePreview()"></select>
+        <select class="l-select" id="fClient" aria-label="Client" onchange="updatePreview()"></select>
       </div>
 
       <!-- Date -->
@@ -73,24 +73,24 @@
       <div class="l-field">
         <div class="l-label">Start Time</div>
         <div class="l-time-row">
-          <select class="l-select" id="fStartH" onchange="updatePreview()"></select>
-          <select class="l-select" id="fStartM" onchange="updatePreview()"></select>
-          <select class="l-select" id="fStartAMPM" onchange="updatePreview()"></select>
+          <select class="l-select" id="fStartH" aria-label="Start hour" onchange="updatePreview()"></select>
+          <select class="l-select" id="fStartM" aria-label="Start minute" onchange="updatePreview()"></select>
+          <select class="l-select" id="fStartAMPM" aria-label="Start AM/PM" onchange="updatePreview()"></select>
         </div>
       </div>
       <div class="l-field">
         <div class="l-label">End Time</div>
         <div class="l-time-row">
-          <select class="l-select" id="fEndH" onchange="updatePreview()"></select>
-          <select class="l-select" id="fEndM" onchange="updatePreview()"></select>
-          <select class="l-select" id="fEndAMPM" onchange="updatePreview()"></select>
+          <select class="l-select" id="fEndH" aria-label="End hour" onchange="updatePreview()"></select>
+          <select class="l-select" id="fEndM" aria-label="End minute" onchange="updatePreview()"></select>
+          <select class="l-select" id="fEndAMPM" aria-label="End AM/PM" onchange="updatePreview()"></select>
         </div>
       </div>
 
       <!-- Lunch -->
       <div class="l-field">
         <div class="l-label">Lunch Break</div>
-        <select class="l-select" id="fLunch" onchange="updatePreview()">
+        <select class="l-select" id="fLunch" aria-label="Lunch break" onchange="updatePreview()">
           <option value="0">None</option>
           <option value="30">30 min</option>
           <option value="45">45 min</option>
@@ -140,10 +140,10 @@
       <div id="tab-history" style="display:none">
         <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
           <div class="l-section-title" style="margin:0;border:none;padding:0;flex:1">Invoice History</div>
-          <select class="l-select" id="histClientFilter" onchange="renderHistory()" style="width:180px">
+          <select class="l-select" id="histClientFilter" aria-label="Filter by client" onchange="renderHistory()" style="width:180px">
             <option value="">All Clients</option>
           </select>
-          <select class="l-select" id="histSort" onchange="renderHistory()" style="width:140px">
+          <select class="l-select" id="histSort" aria-label="Sort order" onchange="renderHistory()" style="width:140px">
             <option value="desc">Newest First</option>
             <option value="asc">Oldest First</option>
           </select>
@@ -236,7 +236,7 @@
   <div class="l-modal">
     <div class="l-modal-title">Edit Entry</div>
     <div class="l-field"><div class="l-label">Client</div>
-      <select class="l-select" id="eClient"></select></div>
+      <select class="l-select" id="eClient" aria-label="Client"></select></div>
     <div class="l-field" style="margin-top:12px"><div class="l-label">Date</div>
       <div class="l-cal-wrap">
         <div style="display:flex;gap:6px">
@@ -249,18 +249,18 @@
     </div>
     <div class="l-field" style="margin-top:12px"><div class="l-label">Start Time</div>
       <div class="l-time-row">
-        <select class="l-select" id="eStartH"></select>
-        <select class="l-select" id="eStartM"></select>
-        <select class="l-select" id="eStartAMPM"></select>
+        <select class="l-select" id="eStartH" aria-label="Start hour"></select>
+        <select class="l-select" id="eStartM" aria-label="Start minute"></select>
+        <select class="l-select" id="eStartAMPM" aria-label="Start AM/PM"></select>
       </div></div>
     <div class="l-field" style="margin-top:12px"><div class="l-label">End Time</div>
       <div class="l-time-row">
-        <select class="l-select" id="eEndH"></select>
-        <select class="l-select" id="eEndM"></select>
-        <select class="l-select" id="eEndAMPM"></select>
+        <select class="l-select" id="eEndH" aria-label="End hour"></select>
+        <select class="l-select" id="eEndM" aria-label="End minute"></select>
+        <select class="l-select" id="eEndAMPM" aria-label="End AM/PM"></select>
       </div></div>
     <div class="l-field" style="margin-top:12px"><div class="l-label">Lunch Break</div>
-      <select class="l-select" id="eLunch">
+      <select class="l-select" id="eLunch" aria-label="Lunch break">
         <option value="0">None</option>
         <option value="30">30 min</option>
         <option value="45">45 min</option>

@@ -35,6 +35,7 @@
       border-radius: 20px; padding: 5px 12px;
       font-family: 'DM Mono', monospace; font-size: 0.72rem;
       color: var(--text-3); cursor: pointer; transition: all 150ms ease;
+      -webkit-user-select: none;
       user-select: none;
     }
     .list-pill:hover { border-color: var(--border-hi); color: var(--text-2); }
@@ -224,16 +225,16 @@
         <div class="add-field grow">
           <div class="add-label">New Task</div>
           <input class="add-input" type="text" id="newTaskTitle"
-            placeholder="Task title…"
+            placeholder="Task title…" aria-label="New task title"
             onkeydown="if(event.key==='Enter') addTask()"/>
         </div>
         <div class="add-field">
           <div class="add-label">Due Date</div>
-          <input class="add-input add-date" type="date" id="newTaskDate"/>
+          <input class="add-input add-date" type="date" id="newTaskDate" aria-label="Due date"/>
         </div>
         <div class="add-field">
           <div class="add-label">List</div>
-          <select class="add-select add-list-select" id="newTaskList"></select>
+          <select class="add-select add-list-select" id="newTaskList" aria-label="Task list"></select>
         </div>
       </div>
       <button class="add-btn" id="addBtn" onclick="addTask()">+ Add</button>
