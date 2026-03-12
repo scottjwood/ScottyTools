@@ -9,6 +9,18 @@
   path     = "/.netlify/edge-functions/ledger-api"
   function = "ledger-api"
 
+[[edge_functions]]
+  path     = "/.netlify/edge-functions/auth-callback"
+  function = "auth-callback"
+
+[[edge_functions]]
+  path     = "/.netlify/edge-functions/auth-token"
+  function = "auth-token"
+
+[[edge_functions]]
+  path     = "/.netlify/edge-functions/auth-signout"
+  function = "auth-signout"
+
 [[headers]]
   for = "/*"
   [headers.values]

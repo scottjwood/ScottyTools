@@ -1,25 +1,30 @@
 /**
- * auth.js — Google OAuth 2.0 for ScottyTools
+ * auth.js — Google OAuth 2.0 for ScottyTools (PKCE flow)
  * ═══════════════════════════════════════════════════════════════
- * Handles sign-in, sign-out, token storage, and access checks.
- * Uses Google Identity Services (GIS) implicit flow — no backend needed.
+ * Handles sign-in, sign-out, token management, and access checks.
  *
- * Usage:
- *   Auth.init()           — call on every page, renders sign-in UI
- *   Auth.requireAuth()    — call on protected pages, redirects if not signed in
- *   Auth.getToken()       — returns current access token or null
+ * Uses authorization code + PKCE flow. The refresh token lives
+ * exclusively in a server-side HttpOnly cookie managed by the
+ * auth-callback and auth-token edge functions. The browser only
+ * ever sees short-lived access tokens cached in memory.
+ *
+ * Public API (identical to the previous implicit-flow version):
+ *   Auth.init()           — call on every page; resolves auth state
+ *   Auth.requireAuth()    — call on protected pages; shows sign-in if needed
+ *   Auth.getToken()       — returns current access token or null (synchronous)
  *   Auth.getUser()        — returns { name, email, picture } or null
- *   Auth.signOut()        — clears session and redirects to index
- *   Auth.onReady(fn)      — calls fn(user) when auth state is known
+ *   Auth.signOut()        — clears server session and navigates to index
+ *   Auth.onReady(fn)      — calls fn(user) once auth state is known
+ *   Auth.requestSignIn()  — initiates the OAuth redirect flow
+ *   Auth.isSignedIn()     — returns boolean
  */
 
 const Auth = (() => {
 
-  // ── Config ────────────────────────────────────────────────────────────────
-  const CLIENT_ID     = '%%GOOGLE_CLIENT_ID%%';
-  const ALLOWED_EMAIL = '%%ALLOWED_EMAIL%%';
+  // ── Config (injected at build time by build.sh) ────────────────────────────
+  const CLIENT_ID = '%%GOOGLE_CLIENT_ID%%';
 
-  // Google API scopes — request all upfront so user only authorizes once
+  // All scopes requested upfront so the user only goes through consent once
   const SCOPES = [
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/tasks',
@@ -31,275 +36,132 @@ const Auth = (() => {
     'profile',
   ].join(' ');
 
-  // ── Storage keys ─────────────────────────────────────────────────────────
-  const KEY_TOKEN        = 'st_google_token';
-  const KEY_EXPIRY       = 'st_google_expiry';       // access token expiry (1hr)
-  const KEY_USER         = 'st_google_user';
-  const KEY_SESSION_SEEN = 'st_session_seen';         // last successful sign-in (30d)
+  // ── Edge function endpoints ────────────────────────────────────────────────
+  const TOKEN_ENDPOINT    = '/.netlify/edge-functions/auth-token';
+  const SIGNOUT_ENDPOINT  = '/.netlify/edge-functions/auth-signout';
+  const CALLBACK_PATH     = '/.netlify/edge-functions/auth-callback';
+  const PKCE_COOKIE       = 'st_pkce';
 
-  const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-  // ── Internal state ────────────────────────────────────────────────────────
-  let _tokenClient    = null;
-  let _readyCallbacks = [];
-  let _user           = null;
-  let _token          = null;
+  // ── In-memory state (never persisted to localStorage) ─────────────────────
+  let _token          = null;   // current access token
+  let _expiresAt      = 0;      // absolute ms timestamp of token expiry
+  let _user           = null;   // { name, email, picture }
+  let _readyCallbacks = [];     // null after first fireReady()
   let _refreshTimer   = null;
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── PKCE helpers ───────────────────────────────────────────────────────────
 
-  /** Returns true if the user has signed in within the last 30 days */
-  function sessionValid() {
-    try {
-      const seen = parseInt(localStorage.getItem(KEY_SESSION_SEEN) || '0');
-      return seen > 0 && (Date.now() - seen) < SESSION_DURATION_MS;
-    } catch { return false; }
+  function _b64url(buf) {
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g,  '');
   }
 
-  /** Load access token from storage if it hasn't expired yet */
-  function loadSession() {
+  async function _generateVerifier() {
+    return _b64url(crypto.getRandomValues(new Uint8Array(32)));
+  }
+
+  async function _codeChallenge(verifier) {
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    return _b64url(hash);
+  }
+
+  function _generateState() {
+    return _b64url(crypto.getRandomValues(new Uint8Array(16)));
+  }
+
+  // ── Token management ───────────────────────────────────────────────────────
+
+  /**
+   * Calls the auth-token edge function to get a valid access token.
+   * The edge function reads the HttpOnly session cookie (invisible to JS),
+   * refreshes via Google if needed, and returns { access_token, expires_in, user }.
+   * Returns true on success, false on 401/error.
+   */
+  async function _fetchToken() {
     try {
-      const expiry = parseInt(localStorage.getItem(KEY_EXPIRY) || '0');
-      _user = JSON.parse(localStorage.getItem(KEY_USER) || 'null');
-      if (_user && Date.now() < expiry) {
-        _token = localStorage.getItem(KEY_TOKEN);
-        return true;
+      const res = await fetch(TOKEN_ENDPOINT, { credentials: 'same-origin' });
+      if (res.status === 401) {
+        _token     = null;
+        _user      = null;
+        _expiresAt = 0;
+        return false;
       }
-      // Token expired but user may still be within 30-day window
-      // — token will be refreshed silently in _initGIS
-      _token = null;
-      return !!_user; // user known, token needs refresh
-    } catch {}
-    clearSession();
-    return false;
-  }
-
-  function saveSession(token, expiresIn, user) {
-    _token = token;
-    _user  = user;
-    const expiry = Date.now() + (expiresIn - 60) * 1000;
-    localStorage.setItem(KEY_TOKEN,        token);
-    localStorage.setItem(KEY_EXPIRY,       String(expiry));
-    localStorage.setItem(KEY_USER,         JSON.stringify(user));
-    localStorage.setItem(KEY_SESSION_SEEN, String(Date.now()));
-    // Schedule silent refresh 2 min before expiry
-    scheduleRefresh(expiry);
-  }
-
-  function clearSession() {
-    _token = null;
-    _user  = null;
-    clearTimeout(_refreshTimer);
-    localStorage.removeItem(KEY_TOKEN);
-    localStorage.removeItem(KEY_EXPIRY);
-    localStorage.removeItem(KEY_USER);
-    localStorage.removeItem(KEY_SESSION_SEEN);
-  }
-
-  /** Silently refresh the access token without any UI prompt */
-  function silentRefresh() {
-    if (!_tokenClient) return;
-    // NOTE: We do NOT call requestAccessToken here automatically.
-    // Doing so can trigger a full popup window in the background.
-    // Instead we let the token expire and show a passive re-auth nudge.
-    _token = null;
-    localStorage.removeItem(KEY_TOKEN);
-    localStorage.removeItem(KEY_EXPIRY);
-    if (sessionValid()) {
-      _showReauthBanner();
+      if (!res.ok) {
+        console.warn('Auth: auth-token returned', res.status);
+        return false;
+      }
+      const data = await res.json();
+      _token     = data.access_token;
+      _expiresAt = Date.now() + (data.expires_in - 60) * 1000;
+      if (data.user) _user = data.user;
+      _scheduleRefresh(_expiresAt);
+      return true;
+    } catch (err) {
+      console.warn('Auth: fetch token error:', err);
+      return false;
     }
   }
 
-  function scheduleRefresh(expiryMs) {
+  /**
+   * Schedules a silent background refresh 2 minutes before the token expires.
+   * No popup, no user interaction — the edge function handles everything.
+   */
+  function _scheduleRefresh(expiresAt) {
     clearTimeout(_refreshTimer);
-    const msUntilExpiry = expiryMs - Date.now();
-    if (msUntilExpiry > 0) {
-      // When token expires, clear it and show a gentle nudge — don't popup
-      _refreshTimer = setTimeout(silentRefresh, msUntilExpiry);
+    const delay = expiresAt - Date.now() - (2 * 60 * 1000); // 2 min early
+    if (delay > 0) {
+      _refreshTimer = setTimeout(async () => {
+        await _fetchToken();
+        // If refresh fails (e.g., token revoked), _token becomes null.
+        // Pages calling getToken() will get null and should handle gracefully.
+      }, delay);
     }
   }
 
-  /** Small non-blocking banner at the top of the page asking user to click re-auth */
-  function _showReauthBanner() {
-    if (document.getElementById('reauth-banner')) return; // already shown
-    const banner = document.createElement('div');
-    banner.id = 'reauth-banner';
-    banner.style.cssText = `
-      position:fixed; top:var(--nav-h, 52px); left:0; right:0; z-index:1000;
-      background:#1a1c1e; border-bottom:1px solid rgba(232,160,32,0.3);
-      display:flex; align-items:center; justify-content:center; gap:12px;
-      padding:8px 16px; font-family:'DM Mono',monospace; font-size:0.75rem;
-      color:#7a8585;
-    `;
-    banner.innerHTML = `
-      <span>Session expired —</span>
-      <button id="reauth-btn" style="
-        background:rgba(232,160,32,0.12); border:1px solid rgba(232,160,32,0.35);
-        border-radius:5px; color:#e8a020; font-family:'DM Mono',monospace;
-        font-size:0.75rem; padding:4px 12px; cursor:pointer;
-      ">Click to continue</button>
-      <button id="reauth-dismiss" style="
-        background:none; border:none; color:#404848;
-        font-size:0.9rem; cursor:pointer; padding:2px 6px;
-      ">✕</button>
-    `;
-    document.body.appendChild(banner);
-    document.getElementById('reauth-btn').addEventListener('click', () => {
-      banner.remove();
-      _tokenClient.requestAccessToken({ prompt: '' });
-    });
-    document.getElementById('reauth-dismiss').addEventListener('click', () => {
-      banner.remove();
-    });
-  }
+  // ── Ready callbacks ────────────────────────────────────────────────────────
 
-  async function fetchUserInfo(token) {
-    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    return await res.json();
-  }
-
-  function isAllowed(email) {
-    if (!ALLOWED_EMAIL || ALLOWED_EMAIL.length < 3) return true; // dev fallback
-    return email.toLowerCase() === ALLOWED_EMAIL.toLowerCase();
-  }
-
-  function fireReady() {
+  function _fireReady() {
     const cbs = _readyCallbacks || [];
-    _readyCallbacks = null;
-    cbs.forEach(fn => fn(_user));
+    _readyCallbacks = null;  // mark as fired
+    cbs.forEach(fn => { try { fn(_user); } catch (e) { console.error(e); } });
   }
 
-  // ── Public API ────────────────────────────────────────────────────────────
-  function getToken()  { return _token; }
-  function getUser()   { return _user; }
-  function isSignedIn(){ return !!(_token && _user); }
+  // ── Public API ─────────────────────────────────────────────────────────────
 
+  /** Returns the current in-memory access token, or null if not authenticated */
+  function getToken() { return _token; }
+
+  /** Returns { name, email, picture } for the signed-in user, or null */
+  function getUser() { return _user; }
+
+  /** Returns true if the user is currently authenticated with a valid token */
+  function isSignedIn() { return !!(_token && _user); }
+
+  /**
+   * onReady(fn) — calls fn(user) once auth state is resolved.
+   * If already resolved, calls fn immediately.
+   */
   function onReady(fn) {
-    if (_readyCallbacks === null) { fn(_user); return; } // already fired
+    if (_readyCallbacks === null) { fn(_user); return; }
     _readyCallbacks.push(fn);
   }
 
-  function signOut() {
-    if (window.google && _token) {
-      google.accounts.oauth2.revoke(_token, () => {});
-    }
-    clearSession(); // clears KEY_SESSION_SEEN too — forces full sign-in next time
-    const depth = window.location.pathname.split('/').filter(Boolean).length;
-    const prefix = depth > 1 ? '../' : '';
-    window.location.href = prefix + 'index.html';
-  }
-
   /**
-   * init() — Load Google Identity Services and set up auth state.
-   * Call on every page. Renders nothing visible — Nav handles the UI.
+   * init() — resolve auth state on page load.
+   * Calls auth-token to get a valid access token from the session cookie.
+   * Fires onReady callbacks once the result is known.
    */
-  function init(opts = {}) {
-    const { onSignIn } = opts;
-
-    // Load GIS script if not already present
-    if (!document.getElementById('gis-script')) {
-      const script = document.createElement('script');
-      script.id  = 'gis-script';
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => _initGIS(onSignIn);
-      document.head.appendChild(script);
-    } else if (window.google?.accounts) {
-      _initGIS(onSignIn);
-    }
-
-    // Restore session from storage immediately (before GIS loads)
-    loadSession();
-  }
-
-  function _initGIS(onSignIn) {
-    if (!CLIENT_ID || CLIENT_ID.length < 10) {
-      console.warn('Auth: CLIENT_ID not configured.');
-      fireReady();
-      return;
-    }
-
-    _tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      callback: async (response) => {
-        if (response.error) {
-          if (response.error === 'interaction_required' ||
-              response.error === 'access_denied') {
-            // Silent refresh requires user gesture — don't clear session,
-            // just wait until user manually interacts
-            console.warn('Auth: silent refresh needs interaction:', response.error);
-          } else {
-            console.warn('Auth: token error:', response.error);
-          }
-          if (_readyCallbacks !== null) fireReady();
-          return;
-        }
-
-        // For silent refreshes we already have _user — skip fetching profile
-        if (_user && isAllowed(_user.email)) {
-          saveSession(response.access_token, response.expires_in, _user);
-          if (_readyCallbacks !== null) fireReady();
-          if (onSignIn) onSignIn(_user);
-          return;
-        }
-
-        // First sign-in — fetch and verify user profile
-        const userInfo = await fetchUserInfo(response.access_token);
-        if (!isAllowed(userInfo.email)) {
-          alert(`Access denied: ${userInfo.email} is not authorized to use ScottyTools.`);
-          clearSession();
-          fireReady();
-          return;
-        }
-        const user = {
-          name:    userInfo.name,
-          email:   userInfo.email,
-          picture: userInfo.picture,
-        };
-        saveSession(response.access_token, response.expires_in, user);
-        fireReady();
-        if (onSignIn) onSignIn(user);
-      },
+  function init() {
+    _fetchToken().then(() => {
+      _fireReady();
     });
-
-    // Use the session state already loaded by init() — don't call loadSession() again
-    const expiry = parseInt(localStorage.getItem(KEY_EXPIRY) || '0');
-
-    if (_token && _user && Date.now() < expiry) {
-      // Token still valid — schedule refresh and fire ready
-      scheduleRefresh(expiry);
-      fireReady();
-    } else if (_user && sessionValid()) {
-      // User known, token expired, but within 30-day window —
-      // fire ready with user so page loads, show reauth banner
-      fireReady();
-      _showReauthBanner();
-    } else {
-      // No session or session older than 30 days — require sign-in
-      clearSession();
-      fireReady();
-    }
   }
 
   /**
-   * requestSignIn() — Trigger the Google OAuth popup.
-   */
-  function requestSignIn() {
-    if (!_tokenClient) {
-      alert('Auth not initialized yet. Please wait a moment and try again.');
-      return;
-    }
-    // 'select_account' shows account picker but skips consent if already granted
-    _tokenClient.requestAccessToken({ prompt: 'select_account' });
-  }
-
-  /**
-   * requireAuth(redirectPath) — Enforce auth on protected pages.
-   * If not signed in, shows a sign-in screen overlay instead of the page.
+   * requireAuth() — enforce authentication on protected pages.
+   * Waits for auth state then shows a full-page sign-in overlay if not signed in.
    */
   function requireAuth() {
     onReady((user) => {
@@ -309,8 +171,69 @@ const Auth = (() => {
     });
   }
 
+  /**
+   * requestSignIn() — initiate the OAuth 2.0 authorization code + PKCE flow.
+   * Generates a code verifier + challenge, saves them in a temporary cookie,
+   * then redirects the browser to Google's consent screen.
+   * After the user authorizes, Google redirects to auth-callback which sets
+   * the session cookie and redirects back to this page.
+   */
+  async function requestSignIn() {
+    if (!CLIENT_ID || CLIENT_ID.length < 10) {
+      alert('Auth not configured — CLIENT_ID missing.');
+      return;
+    }
+
+    const verifier   = await _generateVerifier();
+    const challenge  = await _codeChallenge(verifier);
+    const state      = _generateState();
+    const returnUrl  = location.href;
+
+    // Store PKCE params in a short-lived cookie so auth-callback can read them.
+    // Not HttpOnly (JS must set it); SameSite=Lax means it's sent on the
+    // top-level redirect back from Google.
+    const pkceData = btoa(JSON.stringify({ state, verifier, returnUrl }));
+    document.cookie =
+      `${PKCE_COOKIE}=${pkceData}; Path=/; SameSite=Lax; Secure; Max-Age=300`;
+
+    const redirectUri = `${location.origin}${CALLBACK_PATH}`;
+
+    const params = new URLSearchParams({
+      client_id:             CLIENT_ID,
+      redirect_uri:          redirectUri,
+      response_type:         'code',
+      scope:                 SCOPES,
+      state,
+      code_challenge:        challenge,
+      code_challenge_method: 'S256',
+      access_type:           'offline',
+      // prompt=consent forces Google to return a refresh_token.
+      // Only shown on initial sign-in or after sign-out; never during
+      // background token refreshes (those are silent server-side).
+      prompt:                'consent',
+    });
+
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  }
+
+  /**
+   * signOut() — clear the server-side session and navigate home.
+   * Navigates directly to the auth-signout edge function which clears
+   * the HttpOnly cookie (JS cannot do this) and redirects to /.
+   */
+  function signOut() {
+    clearTimeout(_refreshTimer);
+    _token     = null;
+    _user      = null;
+    _expiresAt = 0;
+    // Navigate to the server-side signout endpoint; it clears the
+    // HttpOnly session cookie and issues a redirect to /
+    window.location.href = SIGNOUT_ENDPOINT;
+  }
+
+  // ── Sign-in overlay ────────────────────────────────────────────────────────
+
   function _showSignInOverlay() {
-    // Hide page content
     document.body.style.overflow = 'hidden';
 
     const overlay = document.createElement('div');
@@ -363,24 +286,9 @@ const Auth = (() => {
     document.getElementById('auth-signin-btn').addEventListener('click', () => {
       requestSignIn();
     });
-
-    // Listen for successful sign-in and remove overlay
-    onReady((user) => {
-      if (user) {
-        overlay.remove();
-        document.body.style.overflow = '';
-      }
-    });
   }
 
-  // Re-expose onReady for post-init use
-  function onReadyPublic(fn) {
-    if (isSignedIn()) { fn(_user); return; }
-    // Re-register for next sign-in
-    const orig = _tokenClient?._callback;
-    fn(null);
-  }
-
+  // ── Exports ────────────────────────────────────────────────────────────────
   return {
     init,
     requireAuth,
