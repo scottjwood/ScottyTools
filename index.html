@@ -102,6 +102,29 @@
     }
     .tasks-widget-empty { padding: 28px 16px; font-size: 0.8rem; color: var(--text-3); text-align: center; }
     .tasks-widget-loading { padding: 14px 16px; font-size: 0.75rem; color: var(--text-3); }
+    .tasks-widget-name { cursor: pointer; }
+    .tasks-widget-name:hover { color: var(--accent); }
+    .tasks-widget-due { cursor: pointer; }
+    .tasks-widget-due:hover { opacity: 0.75; }
+    .tasks-widget-add-due {
+      font-family: var(--mono); font-size: 0.65rem;
+      color: var(--text-3); cursor: pointer; opacity: 0;
+      transition: opacity 150ms ease;
+    }
+    .tasks-widget-item:hover .tasks-widget-add-due { opacity: 0.5; }
+    .tasks-widget-add-due:hover { opacity: 1 !important; color: var(--accent); }
+    .tasks-widget-edit-input {
+      background: #1a1c1e; border: 1px solid var(--accent);
+      border-radius: 4px; color: var(--text-1);
+      font-family: var(--mono); font-size: 0.8rem;
+      padding: 2px 6px; outline: none; width: 100%; box-sizing: border-box;
+    }
+    .tasks-widget-edit-date {
+      background: #1a1c1e; border: 1px solid var(--accent);
+      border-radius: 4px; color: var(--text-1);
+      font-family: var(--mono); font-size: 0.65rem;
+      padding: 2px 4px; outline: none; color-scheme: dark;
+    }
 
     /* ── Drag and drop ────────────────────────────────────────────── */
     .tool-card[draggable] { cursor: grab; }
@@ -477,15 +500,18 @@
         const dueInfo  = t.due ? wGetDue(t.due) : null;
         const listName = wTaskListMap[t._listId] || '';
         const showBadge = wFilterId === 'all' && listName;
+        const dueHtml = dueInfo
+          ? `<span class="tasks-widget-due ${dueInfo.cls}" onclick="wEditDue('${t._listId}','${t.id}')" title="Edit due date">${dueInfo.label}</span>`
+          : `<span class="tasks-widget-add-due" onclick="wEditDue('${t._listId}','${t.id}')" title="Add due date">+ due date</span>`;
 
         return `
-          <div class="tasks-widget-item">
+          <div class="tasks-widget-item" id="wtask-${t.id}">
             <button class="tasks-widget-check"
               onclick="wComplete('${t._listId}','${t.id}')" title="Mark complete"></button>
             <div class="tasks-widget-body">
-              <div class="tasks-widget-name">${escHtml(t.title)}</div>
+              <div class="tasks-widget-name" onclick="wEditTitle('${t._listId}','${t.id}')" title="Edit task">${escHtml(t.title)}</div>
               <div class="tasks-widget-meta">
-                ${dueInfo ? `<span class="tasks-widget-due ${dueInfo.cls}">${dueInfo.label}</span>` : ''}
+                ${dueHtml}
                 ${showBadge ? `<span class="tasks-widget-list-badge">${escHtml(listName)}</span>` : ''}
               </div>
             </div>
@@ -534,6 +560,89 @@
         wTaskData.unshift({ ...task, _listId: listId });
         wRenderTasks();
       }
+    }
+
+    async function wGPatch(listId, taskId, body) {
+      const token = Auth.getToken();
+      if (!token) return;
+      await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    }
+
+    function wEditTitle(listId, taskId) {
+      const task = wTaskData.find(t => t._listId === listId && t.id === taskId);
+      if (!task) return;
+      const itemEl = document.getElementById('wtask-' + taskId);
+      if (!itemEl) return;
+      const el = itemEl.querySelector('.tasks-widget-name');
+      if (!el || el.querySelector('input')) return;
+
+      const input = document.createElement('input');
+      input.className = 'tasks-widget-edit-input';
+      input.value = task.title;
+      el.textContent = '';
+      el.appendChild(input);
+      input.focus(); input.select();
+
+      let saved = false;
+      const save = async () => {
+        if (saved) return; saved = true;
+        const newTitle = input.value.trim();
+        if (!newTitle || newTitle === task.title) { wRenderTasks(); return; }
+        task.title = newTitle;
+        wRenderTasks();
+        try { await wGPatch(listId, taskId, { title: newTitle }); }
+        catch(e) { await wLoadTasks(); }
+      };
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { saved = true; wRenderTasks(); }
+      });
+    }
+
+    function wEditDue(listId, taskId) {
+      const task = wTaskData.find(t => t._listId === listId && t.id === taskId);
+      if (!task) return;
+      const itemEl = document.getElementById('wtask-' + taskId);
+      if (!itemEl) return;
+      const el = itemEl.querySelector('.tasks-widget-due') || itemEl.querySelector('.tasks-widget-add-due');
+      if (!el || el.querySelector('input')) return;
+
+      const input = document.createElement('input');
+      input.type = 'date';
+      input.className = 'tasks-widget-edit-date';
+      input.value = task.due ? task.due.slice(0, 10) : '';
+      el.textContent = '';
+      el.appendChild(input);
+      input.focus();
+
+      let saved = false;
+      const save = async () => {
+        if (saved) return; saved = true;
+        const dateVal = input.value;
+        const newDue  = dateVal ? new Date(dateVal + 'T00:00:00Z').toISOString() : null;
+        if (newDue === task.due) { wRenderTasks(); return; }
+        task.due = newDue;
+        wTaskData.sort((a, b) => {
+          if (!a.due && !b.due) return 0;
+          if (!a.due) return 1;
+          if (!b.due) return -1;
+          return a.due.localeCompare(b.due);
+        });
+        wRenderTasks();
+        try { await wGPatch(listId, taskId, { due: newDue }); }
+        catch(e) { await wLoadTasks(); }
+      };
+      input.addEventListener('change', () => { save(); });
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { saved = true; wRenderTasks(); }
+      });
     }
 
     function escHtml(str) {

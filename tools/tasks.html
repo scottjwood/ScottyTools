@@ -194,6 +194,33 @@
     }
     .completed-toggle:hover { color: var(--text-2); }
 
+    /* ── Inline editing ──────────────────────────────────────── */
+    .task-title { cursor: pointer; border-radius: 3px; }
+    .task-title:hover { color: var(--accent); }
+    .task-due   { cursor: pointer; }
+    .task-due:hover { opacity: 0.75; }
+    .task-add-due {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem; margin-top: 4px;
+      color: var(--text-3); cursor: pointer; opacity: 0;
+      transition: opacity 150ms ease;
+    }
+    .task-item:hover .task-add-due { opacity: 0.6; }
+    .task-add-due:hover { opacity: 1 !important; color: var(--accent); }
+    .task-edit-input {
+      background: #1a1c1e; border: 1px solid var(--accent);
+      border-radius: 4px; color: var(--text-1);
+      font-family: 'DM Mono', monospace; font-size: 0.85rem;
+      padding: 2px 6px; outline: none; width: 100%; box-sizing: border-box;
+    }
+    .task-edit-date {
+      background: #1a1c1e; border: 1px solid var(--accent);
+      border-radius: 4px; color: var(--text-1);
+      font-family: 'DM Mono', monospace; font-size: 0.68rem;
+      padding: 2px 4px; outline: none;
+      color-scheme: dark;
+    }
+
     /* ── Status toast ────────────────────────────────────────── */
     .task-status {
       font-size: 0.72rem; color: var(--text-3);
@@ -435,7 +462,8 @@ function renderTaskItem(task, listId) {
   const done    = task.status === 'completed';
   const dueInfo = task.due ? getDueInfo(task.due) : null;
   const dueHtml = dueInfo
-    ? `<div class="task-due ${dueInfo.cls}">${dueInfo.label}</div>` : '';
+    ? `<div class="task-due ${dueInfo.cls}" onclick="editDue('${listId}','${task.id}')" title="Edit due date">${dueInfo.label}</div>`
+    : `<div class="task-add-due" onclick="editDue('${listId}','${task.id}')" title="Add due date">+ due date</div>`;
   const notesHtml = task.notes
     ? `<div class="task-notes">${escHtml(task.notes.slice(0, 200))}${task.notes.length > 200 ? '…' : ''}</div>` : '';
 
@@ -445,7 +473,7 @@ function renderTaskItem(task, listId) {
         onclick="toggleComplete('${listId}','${task.id}','${done}')"
         title="${done ? 'Mark incomplete' : 'Mark complete'}"></button>
       <div class="task-body">
-        <div class="task-title">${escHtml(task.title)}</div>
+        <div class="task-title" onclick="editTitle('${listId}','${task.id}')" title="Edit task">${escHtml(task.title)}</div>
         ${notesHtml}
         ${dueHtml}
       </div>
@@ -571,6 +599,89 @@ async function refreshList(listId) {
   } catch(e) {
     setStatus('Refresh failed: ' + e.message, 'err');
   }
+}
+
+// ── Inline edit title ────────────────────────────────────────────────────
+function editTitle(listId, taskId) {
+  const task  = (taskData[listId] || []).find(t => t.id === taskId);
+  if (!task) return;
+  const taskEl = document.getElementById('task-' + taskId);
+  if (!taskEl) return;
+  const el = taskEl.querySelector('.task-title');
+  if (!el || el.querySelector('input')) return;
+
+  const input = document.createElement('input');
+  input.className = 'task-edit-input';
+  input.value = task.title;
+  el.textContent = '';
+  el.appendChild(input);
+  input.focus(); input.select();
+
+  let saved = false;
+  const save = async () => {
+    if (saved) return; saved = true;
+    const newTitle = input.value.trim();
+    if (!newTitle || newTitle === task.title) { renderTasks(); return; }
+    task.title = newTitle;
+    renderTasks();
+    try {
+      await gFetch(
+        `https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks/${taskId}`,
+        { method: 'PATCH', body: JSON.stringify({ title: newTitle }) }
+      );
+    } catch(e) {
+      setStatus('Failed to update: ' + e.message, 'err');
+      await refreshList(listId);
+    }
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { saved = true; renderTasks(); }
+  });
+}
+
+// ── Inline edit due date ─────────────────────────────────────────────────
+function editDue(listId, taskId) {
+  const task   = (taskData[listId] || []).find(t => t.id === taskId);
+  if (!task) return;
+  const taskEl = document.getElementById('task-' + taskId);
+  if (!taskEl) return;
+  const el = taskEl.querySelector('.task-due') || taskEl.querySelector('.task-add-due');
+  if (!el || el.querySelector('input')) return;
+
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.className = 'task-edit-date';
+  input.value = task.due ? task.due.slice(0, 10) : '';
+  el.textContent = '';
+  el.appendChild(input);
+  input.focus();
+
+  let saved = false;
+  const save = async () => {
+    if (saved) return; saved = true;
+    const dateVal = input.value;
+    const newDue  = dateVal ? new Date(dateVal + 'T00:00:00Z').toISOString() : null;
+    if (newDue === task.due) { renderTasks(); return; }
+    task.due = newDue;
+    renderTasks();
+    try {
+      await gFetch(
+        `https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks/${taskId}`,
+        { method: 'PATCH', body: JSON.stringify({ due: newDue }) }
+      );
+    } catch(e) {
+      setStatus('Failed to update: ' + e.message, 'err');
+      await refreshList(listId);
+    }
+  };
+  input.addEventListener('change', () => { save(); });
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { saved = true; renderTasks(); }
+  });
 }
 
 // ── Utils ─────────────────────────────────────────────────────────────────
