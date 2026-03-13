@@ -117,9 +117,12 @@
       </div>
 
       <!-- Actions -->
-      <div style="display:flex;gap:8px">
+      <div id="formActions" style="display:flex;gap:8px">
         <button class="l-btn l-btn-primary" style="flex:1" onclick="logEntry()">Log Entry</button>
         <button class="l-btn l-btn-ghost" onclick="clearForm()">Clear</button>
+      </div>
+      <div id="formSuccess" class="l-form-success" style="display:none">
+        <span>✓ Entry logged!</span>
       </div>
     </div>
 
@@ -736,7 +739,15 @@ async function logEntry() {
   renderPending();
   clearForm();
   closeDrawer();
-  toast('Entry added.', 'success');
+
+  // Show prominent in-form success banner
+  document.getElementById('formActions').style.display = 'none';
+  const banner = document.getElementById('formSuccess');
+  banner.style.display = 'flex';
+  setTimeout(() => {
+    banner.style.display = 'none';
+    document.getElementById('formActions').style.display = 'flex';
+  }, 2500);
 
   try {
     await apiWrite('addEntry', entry);

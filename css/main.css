@@ -869,6 +869,22 @@ input, select, textarea { font-family: var(--mono); }
 }
 .l-inline-rate:focus { border-color: var(--l-border-active); }
 
+/* ── Form success banner ────────────────────────────────────────── */
+.l-form-success {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  background: rgba(74,222,128,0.08);
+  border: 1px solid rgba(74,222,128,0.5);
+  border-radius: var(--l-radius);
+  color: #4ade80;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  animation: toastIn 0.2s ease;
+}
+
 /* ── Toast ──────────────────────────────────────────────────────── */
 .l-toast-container {
   position: fixed;
