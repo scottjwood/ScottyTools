@@ -4,7 +4,8 @@
       "Bash(netlify --version)",
       "Bash(ls \"c:/Users/scott/Documents/DEV/ScottyTools/\"*.env*)",
       "Bash(ls \"c:/Users/scott/Documents/DEV/ScottyTools/\"*.toml)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(ls c:/Users/scott/Documents/DEV/ScottyTools/tools/*.html)"
     ]
   }
 }
