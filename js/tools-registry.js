@@ -26,6 +26,7 @@ const TOOL_ICONS = {
   'everdur-alloy': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 4-3.5 7.5-8 9-4.5-1.5-8-5-8-9V6l8-4z"/><path d="M9 12h6m-3-3v6"/></svg>`,
   'tig-reference': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19c0-4 2-7 2-7H10s2 3 2 7z"/><path d="M12 5v3"/><circle cx="12" cy="4" r="1"/><path d="M9 12c-2 1-4 3-4 5"/><path d="M15 12c2 1 4 3 4 5"/></svg>`,
   'tasks': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+  'image-resizer': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="1.5"/><path d="M3 11l3.5-4L10 11l2.5-3 4 6"/><path d="M19 9l2-2m0 0h-4m4 0v4"/><path d="M9 19l-2 2m0 0h4m-4 0v-4"/></svg>`,
 };
 
 function getToolIcon(id) {
@@ -34,6 +35,16 @@ function getToolIcon(id) {
 
 const TOOLS = [
   // ── DIGITAL TOOLS ─────────────────────────────────────────────────────────
+  {
+    id: 'image-resizer',
+    label: 'Image Resizer',
+    description: 'Resize images to WebP in the browser. Set a longest-edge target and quality, then download a ZIP. No upload required.',
+    category: CATEGORIES.DIGITAL,
+    path: 'tools/image-resizer.html',
+    tags: ['image', 'resize', 'webp', 'convert', 'compress', 'batch', 'photo', 'jpg', 'png'],
+    featured: false,
+  },
+
   {
     id: 'color-converter',
     label: 'Color Space Converter',

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Image Resizer — ScottyTools</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    .tool-page { padding-top: var(--nav-h); min-height: 100vh; background: var(--bg); }
+    .tool-container { max-width: 680px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    .tool-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); text-decoration: none; transition: color 150ms ease;
+      margin-bottom: 16px;
+    }
+    .tool-back:hover { color: var(--accent); }
+    .tool-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 2rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--text-1); line-height: 1; margin-bottom: 6px;
+    }
+    .tool-title span { color: var(--accent); }
+    .tool-sub { font-size: 0.82rem; color: var(--text-3); margin-bottom: 32px; }
+
+    /* ── Controls ────────────────────────────────────────────── */
+    .controls-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+    }
+    .ctrl-group {
+      background: #131516; border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px;
+    }
+    .ctrl-label {
+      font-size: 0.63rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-3); margin-bottom: 9px;
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .ctrl-label-val {
+      font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--text-2);
+      letter-spacing: 0;
+    }
+    .ctrl-input {
+      width: 100%; background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-1); font-family: 'DM Mono', monospace;
+      font-size: 1rem; padding: 8px 10px; outline: none;
+      transition: border-color 150ms ease;
+    }
+    .ctrl-input:focus { border-color: var(--accent); }
+    .ctrl-input[type=number]::-webkit-inner-spin-button,
+    .ctrl-input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .ctrl-input[type=number] { -moz-appearance: textfield; }
+
+    /* Quality slider */
+    .slider {
+      width: 100%; -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 2px; background: var(--border);
+      outline: none; cursor: pointer; margin-top: 6px; display: block;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--accent); cursor: pointer;
+      box-shadow: 0 0 0 3px rgba(232,160,32,0.15);
+      transition: box-shadow 150ms ease;
+    }
+    .slider:hover::-webkit-slider-thumb { box-shadow: 0 0 0 5px rgba(232,160,32,0.2); }
+    .slider::-moz-range-thumb {
+      width: 16px; height: 16px; border-radius: 50%; border: none;
+      background: var(--accent); cursor: pointer;
+    }
+
+    /* ── Drop zone ───────────────────────────────────────────── */
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 44px 24px; text-align: center; cursor: pointer;
+      transition: border-color 200ms ease, background 200ms ease;
+      margin-bottom: 16px; background: #0c0e0e;
+      user-select: none;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent); background: rgba(232,160,32,0.04);
+    }
+    .drop-icon { margin-bottom: 12px; color: var(--text-3); }
+    .drop-icon svg { width: 38px; height: 38px; }
+    .drop-text {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem;
+      font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--text-2); margin-bottom: 6px;
+    }
+    .drop-hint { font-size: 0.74rem; color: var(--text-3); margin-bottom: 14px; }
+    .pick-btn {
+      background: none; border: 1px solid var(--border-hi);
+      border-radius: 5px; color: var(--text-2);
+      font-family: 'DM Mono', monospace; font-size: 0.74rem;
+      padding: 6px 16px; cursor: pointer; transition: all 150ms ease;
+    }
+    .pick-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── File list ───────────────────────────────────────────── */
+    .file-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .file-row {
+      background: #131516; border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; display: grid;
+      grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
+    }
+    .file-name {
+      font-family: 'DM Mono', monospace; font-size: 0.77rem;
+      color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 0;
+    }
+    .file-sizes {
+      font-family: 'DM Mono', monospace; font-size: 0.72rem;
+      color: var(--text-3); white-space: nowrap; flex-shrink: 0;
+    }
+    .file-sizes .sz-arrow { margin: 0 4px; opacity: 0.5; }
+    .file-sizes .sz-out   { color: var(--text-2); }
+    .file-status {
+      font-size: 0.72rem; font-family: 'DM Mono', monospace;
+      color: var(--text-3); min-width: 20px; text-align: right; flex-shrink: 0;
+    }
+    .file-status.done       { color: #4ade80; }
+    .file-status.error      { color: #f87171; }
+    .file-status.processing { color: var(--accent); }
+
+    /* ── Result bar ──────────────────────────────────────────── */
+    .summary-bar {
+      background: #131516; border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--text-2);
+    }
+    .summary-savings { color: #4ade80; flex-shrink: 0; }
+
+    .btn-download {
+      width: 100%; padding: 13px; border: none; border-radius: 8px;
+      background: var(--accent); color: #0e0f0f;
+      font-family: 'Barlow Condensed', sans-serif; font-size: 1rem;
+      font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      cursor: pointer; transition: opacity 150ms ease;
+    }
+    .btn-download:hover:not(:disabled) { opacity: 0.88; }
+    .btn-download:disabled { opacity: 0.45; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+
+<div class="tool-page">
+  <div class="tool-container">
+    <a href="../index.html" class="tool-back">← ScottyTools</a>
+    <div class="tool-title">Image <span>Resizer</span></div>
+    <div class="tool-sub">Resize &amp; convert to WebP in the browser. Single or batch — no upload required.</div>
+
+    <!-- Controls -->
+    <div class="controls-row">
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          Longest edge
+          <span class="ctrl-label-val"><span id="edgeVal">1500</span> px</span>
+        </div>
+        <input class="ctrl-input" type="number" id="targetSize" value="1500" min="1" max="99999"
+          oninput="document.getElementById('edgeVal').textContent = this.value"/>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">
+          Quality
+          <span class="ctrl-label-val" id="qualityVal">82</span>
+        </div>
+        <input class="slider" type="range" id="quality" min="0" max="100" value="82"
+          oninput="document.getElementById('qualityVal').textContent = this.value"/>
+      </div>
+    </div>
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="dropZone"
+         onclick="document.getElementById('fileInput').click()">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="14" height="14" rx="1.5"/>
+          <path d="M3 11l3.5-4L10 11l2.5-3 4 6"/>
+          <path d="M19 9l2-2m0 0h-4m4 0v4"/>
+          <path d="M9 19l-2 2m0 0h4m-4 0v-4"/>
+        </svg>
+      </div>
+      <div class="drop-text">Drop images here</div>
+      <div class="drop-hint">JPG · PNG · WebP · AVIF · GIF</div>
+      <button class="pick-btn"
+              onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+        Choose files
+      </button>
+    </div>
+    <input type="file" id="fileInput"
+           accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+           multiple hidden/>
+
+    <!-- File list -->
+    <div class="file-list" id="fileList"></div>
+
+    <!-- Summary + download -->
+    <div id="resultBar" style="display:none">
+      <div class="summary-bar">
+        <span id="summaryText"></span>
+        <span class="summary-savings" id="summarySavings"></span>
+      </div>
+      <button class="btn-download" id="btnDownload" onclick="downloadZip()">
+        ↓ Download ZIP
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="../js/tools-registry.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+Nav.init();
+
+// ── State ──────────────────────────────────────────────────────────────────
+const state = {
+  files: [],
+  // { file, outName, origBytes, outBlob, outBytes, status, error }
+  processing: false,
+};
+
+// ── Drop zone ─────────────────────────────────────────────────────────────
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+let dragCounter = 0;
+
+dropZone.addEventListener('dragenter', e => {
+  e.preventDefault();
+  dragCounter++;
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => {
+  if (--dragCounter <= 0) { dragCounter = 0; dropZone.classList.remove('drag-over'); }
+});
+dropZone.addEventListener('dragover', e => e.preventDefault());
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dragCounter = 0;
+  dropZone.classList.remove('drag-over');
+  const imgs = Array.from(e.dataTransfer.files).filter(isImage);
+  if (imgs.length) handleFiles(imgs);
+});
+
+fileInput.addEventListener('change', () => {
+  handleFiles(Array.from(fileInput.files));
+  fileInput.value = '';
+});
+
+function isImage(f) {
+  return /^image\/(jpeg|png|webp|avif|gif)$/.test(f.type);
+}
+
+// ── File handling ─────────────────────────────────────────────────────────
+function handleFiles(files) {
+  if (!files.length || state.processing) return;
+  state.files = files.map(f => ({
+    file:      f,
+    outName:   f.name.replace(/\.[^.]+$/, '') + '.webp',
+    origBytes: f.size,
+    outBlob:   null,
+    outBytes:  0,
+    status:    'pending',
+    error:     null,
+  }));
+  document.getElementById('resultBar').style.display = 'none';
+  renderFileList();
+  processAll();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function renderFileList() {
+  document.getElementById('fileList').innerHTML = state.files.map((f, i) => `
+    <div class="file-row">
+      <div class="file-name" title="${esc(f.outName)}">${esc(f.outName)}</div>
+      <div class="file-sizes" id="sizes-${i}">${fmtBytes(f.origBytes)}</div>
+      <div class="file-status" id="status-${i}">—</div>
+    </div>`).join('');
+}
+
+function updateRow(i) {
+  const f        = state.files[i];
+  const sizesEl  = document.getElementById(`sizes-${i}`);
+  const statusEl = document.getElementById(`status-${i}`);
+  if (!sizesEl || !statusEl) return;
+
+  if (f.status === 'done') {
+    sizesEl.innerHTML =
+      `${fmtBytes(f.origBytes)}<span class="sz-arrow">→</span><span class="sz-out">${fmtBytes(f.outBytes)}</span>`;
+  } else {
+    sizesEl.textContent = fmtBytes(f.origBytes);
+  }
+
+  const labels = { pending: '—', processing: '…', done: '✓', error: '✗' };
+  statusEl.className = `file-status ${f.status}`;
+  statusEl.textContent = labels[f.status] || '—';
+}
+
+function fmtBytes(b) {
+  return b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : (b / 1024).toFixed(1) + ' KB';
+}
+
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Processing ────────────────────────────────────────────────────────────
+async function processAll() {
+  state.processing = true;
+  const targetSize = Math.max(1, parseInt(document.getElementById('targetSize').value) || 1500);
+  const quality    = (parseInt(document.getElementById('quality').value) || 82) / 100;
+
+  for (let i = 0; i < state.files.length; i++) {
+    const entry = state.files[i];
+    entry.status = 'processing';
+    updateRow(i);
+
+    try {
+      const blob   = await resizeToWebP(entry.file, targetSize, quality);
+      entry.outBlob  = blob;
+      entry.outBytes = blob.size;
+      entry.status   = 'done';
+    } catch (err) {
+      entry.status = 'error';
+      entry.error  = err.message;
+    }
+    updateRow(i);
+  }
+
+  state.processing = false;
+  showSummary();
+}
+
+function resizeToWebP(file, targetPx, quality) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const longest = Math.max(w, h);
+      // Never upscale
+      const ratio = longest > targetPx ? targetPx / longest : 1;
+      const cw = Math.round(w * ratio);
+      const ch = Math.round(h * ratio);
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = cw;
+      canvas.height = ch;
+      canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
+
+      canvas.toBlob(
+        blob => blob ? resolve(blob) : reject(new Error('WebP encode failed')),
+        'image/webp',
+        quality
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+    img.src = url;
+  });
+}
+
+// ── Summary ───────────────────────────────────────────────────────────────
+function showSummary() {
+  const done  = state.files.filter(f => f.status === 'done');
+  const total = state.files.length;
+  if (!done.length) return;
+
+  const origTotal = done.reduce((s, f) => s + f.origBytes, 0);
+  const outTotal  = done.reduce((s, f) => s + f.outBytes,  0);
+  const saved     = origTotal - outTotal;
+  const pct       = origTotal > 0 ? Math.round(saved / origTotal * 100) : 0;
+
+  document.getElementById('summaryText').textContent =
+    `${done.length} of ${total} file${total !== 1 ? 's' : ''} · ${fmtBytes(origTotal)} → ${fmtBytes(outTotal)}`;
+  document.getElementById('summarySavings').textContent =
+    saved > 0 ? `saved ${pct}%` : 'no reduction';
+  document.getElementById('resultBar').style.display = 'block';
+}
+
+// ── Download ZIP ──────────────────────────────────────────────────────────
+async function downloadZip() {
+  const btn = document.getElementById('btnDownload');
+  btn.disabled = true;
+  btn.textContent = 'Building ZIP…';
+
+  const zip = new JSZip();
+  state.files.forEach(f => {
+    if (f.outBlob) zip.file(f.outName, f.outBlob);
+  });
+
+  try {
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zipBlob);
+    a.download = 'resized-images.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↓ Download ZIP';
+  }
+}
+</script>
+</body>
+</html>
