@@ -158,9 +158,9 @@
       <div class="ctrl-group">
         <div class="ctrl-label">
           Longest edge
-          <span class="ctrl-label-val"><span id="edgeVal">1500</span> px</span>
+          <span class="ctrl-label-val"><span id="edgeVal">2048</span> px</span>
         </div>
-        <input class="ctrl-input" type="number" id="targetSize" value="1500" min="1" max="99999"
+        <input class="ctrl-input" type="number" id="targetSize" value="2048" min="1" max="99999"
           oninput="document.getElementById('edgeVal').textContent = this.value"/>
       </div>
       <div class="ctrl-group">
@@ -204,7 +204,7 @@
         <span id="summaryText"></span>
         <span class="summary-savings" id="summarySavings"></span>
       </div>
-      <button class="btn-download" id="btnDownload" onclick="downloadZip()">
+      <button class="btn-download" id="btnDownload" onclick="download()">
         ↓ Download ZIP
       </button>
     </div>
@@ -312,7 +312,7 @@ function esc(s) {
 // ── Processing ────────────────────────────────────────────────────────────
 async function processAll() {
   state.processing = true;
-  const targetSize = Math.max(1, parseInt(document.getElementById('targetSize').value) || 1500);
+  const targetSize = Math.max(1, parseInt(document.getElementById('targetSize').value) || 2048);
   const quality    = (parseInt(document.getElementById('quality').value) || 82) / 100;
 
   for (let i = 0; i < state.files.length; i++) {
@@ -380,19 +380,34 @@ function showSummary() {
     `${done.length} of ${total} file${total !== 1 ? 's' : ''} · ${fmtBytes(origTotal)} → ${fmtBytes(outTotal)}`;
   document.getElementById('summarySavings').textContent =
     saved > 0 ? `saved ${pct}%` : 'no reduction';
+
+  const btn = document.getElementById('btnDownload');
+  btn.textContent = done.length === 1 ? '↓ Download' : '↓ Download ZIP';
+
   document.getElementById('resultBar').style.display = 'block';
 }
 
-// ── Download ZIP ──────────────────────────────────────────────────────────
-async function downloadZip() {
+// ── Download ──────────────────────────────────────────────────────────────
+async function download() {
+  const done = state.files.filter(f => f.outBlob);
+  if (!done.length) return;
+
+  if (done.length === 1) {
+    const f = done[0];
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(f.outBlob);
+    a.download = f.outName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    return;
+  }
+
   const btn = document.getElementById('btnDownload');
   btn.disabled = true;
   btn.textContent = 'Building ZIP…';
 
   const zip = new JSZip();
-  state.files.forEach(f => {
-    if (f.outBlob) zip.file(f.outName, f.outBlob);
-  });
+  done.forEach(f => zip.file(f.outName, f.outBlob));
 
   try {
     const zipBlob = await zip.generateAsync({ type: 'blob' });
